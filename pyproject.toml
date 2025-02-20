@@ -1,0 +1,23 @@
+[project]
+name = "sales_guru"
+version = "0.1.0"
+description = "sales_guru using crewAI"
+authors = [{ name = "Ishaan Bhambra", email = "ibhambra6@gmail.com" }]
+requires-python = ">=3.10,<3.13"
+dependencies = [
+    "crewai[tools]>=0.102.0,<1.0.0"
+]
+
+[project.scripts]
+sales_guru = "sales_guru.main:run"
+run_crew = "sales_guru.main:run"
+train = "sales_guru.main:train"
+replay = "sales_guru.main:replay"
+test = "sales_guru.main:test"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.crewai]
+type = "crew"

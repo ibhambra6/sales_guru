@@ -1,0 +1,5 @@
+.venv
+.env
+report.md
+uv.lock
+.DS_Store
