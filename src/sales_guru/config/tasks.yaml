@@ -1,17 +1,61 @@
-research_task:
+lead_qualification_task:
   description: >
-    Conduct a thorough research about {topic}
-    Make sure you find any interesting and relevant information given
-    the current year is {current_year}.
+    Retrieve lead data from the CRM and other designated sources, then cleanse, normalize, and deduplicate the records.
+    Apply scoring logic based on engagement metrics and historical performance to classify each lead as HOT, WARM, or COLD.
   expected_output: >
-    A list with 10 bullet points of the most relevant information about {topic}
-  agent: researcher
+    A JSON-formatted list of lead records where each record includes an additional field for the lead score and classification (HOT, WARM, or COLD),
+    ready for prioritization in the sales process.
 
-reporting_task:
-  description: >
-    Review the context you got and expand each topic into a full section for a report.
-    Make sure the report is detailed and contains any and all relevant information.
-  expected_output: >
-    A fully fledged report with the main topics, each with a full section of information.
-    Formatted as markdown without '```'
-  agent: reporting_analyst
+# prospect_research_task:
+#   description: >
+#     Enrich each lead with detailed company and decision-maker information by gathering data from LinkedIn, websites, and news articles.
+#   expected_output: >
+#     An enriched dataset where each lead record includes company details and relevant decision-maker insights.
+
+# email_outreach_task:
+#   description: >
+#     Generate personalized outreach emails and messages using CRM data and interaction history via GPT-based templates.
+#   expected_output: >
+#     A list of customized email messages for each lead, formatted in plain text.
+
+# sales_call_prep_task:
+#   description: >
+#     Compile essential information from CRM, emails, and LinkedIn profiles to create one-page call briefs for sales calls.
+#   expected_output: >
+#     A one-page summary for each lead highlighting key details for effective call preparation.
+
+# objection_handling_task:
+#   description: >
+#     Analyze historical sales data to provide real-time objection handling suggestions during calls.
+#   expected_output: >
+#     A list of recommended responses for common objections, structured for quick reference.
+
+# proposal_quote_task:
+#   description: >
+#     Automatically generate tailored proposals and pricing quotes by integrating data from product catalogs, CRM, and customer details.
+#   expected_output: >
+#     Detailed proposal and quote documents for each customer, covering pricing and custom recommendations.
+
+# competitor_analysis_task:
+#   description: >
+#     Gather and summarize competitor information through web scraping and market research, highlighting key competitive insights.
+#   expected_output: >
+#     A summary report of competitor strengths, weaknesses, and market positioning.
+
+# sales_forecasting_task:
+#   description: >
+#     Utilize historical deal data and current pipeline metrics to predict deal success and forecast future revenue.
+#   expected_output: >
+#     A forecasting model output with predicted success rates and revenue estimates for ongoing deals.
+
+# followup_nurture_task:
+#   description: >
+#     Implement and schedule follow-up communications to nurture leads based on CRM data and email tracking.
+#   expected_output: >
+#     A scheduled set of follow-up messages with corresponding time triggers and content drafts.
+
+# customer_success_upsell_task:
+#   description: >
+#     Analyze customer usage values, support tickets, and CRM insights to flag accounts with upsell or renewal potential.
+#   expected_output: >
+#     A report detailing accounts flagged for upsell/renewal along with the metrics used for their assessment.
