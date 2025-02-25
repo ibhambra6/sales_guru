@@ -1,10 +1,21 @@
 lead_qualification_task:
   description: >
-    Retrieve lead data from the CRM and other designated sources, then cleanse, normalize, and deduplicate the records.
-    Apply scoring logic based on engagement metrics and historical performance to classify each lead as HOT, WARM, or COLD.
+    Analyze each lead based on the company you represent: {company_name} and its description: {company_description}.
+    Evaluate whether the lead's company would be a good fit for your offerings by considering:
+    1. Industry alignment with your company's target markets
+    2. Company size and growth potential
+    3. Potential use cases for your products/services
+    4. Decision-maker seniority and influence
+    5. Current tech stack or solutions they might be using
+    Cleanse, normalize, and deduplicate the lead records as needed. Use the web to find more information about the lead if needed. There are no exceptions to this and ALL leads must be classified. 
   expected_output: >
-    A JSON-formatted list of lead records where each record includes an additional field for the lead score and classification (HOT, WARM, or COLD),
-    ready for prioritization in the sales process.
+    A JSON-formatted list of ALL lead records where each record includes:
+    1. An additional field for lead score (0-100)
+    2. Classification (HOT, WARM, or COLD)
+    3. Brief reasoning for the classification
+    4. Potential value alignment between your company and the lead
+    5. Recommended approach for initial outreach
+    All formatted and ready for prioritization in the sales process. There are no exceptions to this and ALL leads must be classified.
 
 # prospect_research_task:
 #   description: >
