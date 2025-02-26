@@ -3,12 +3,14 @@ from dotenv import load_dotenv
 from crewai import Agent, Crew, Process, Task
 from crewai.project import CrewBase, agent, crew, task
 from crewai_tools import SerperDevTool, CSVSearchTool, FileReadTool
+from crewai import LLM
 
 # Load environment variables from .env file
 load_dotenv()
 
 # Get API key from environment variables
 serper_api_key = os.getenv('SERPER_API_KEY')
+google_api_key = os.getenv('GOOGLE_API_KEY')
 # If you want to run a snippet of code before or after the crew starts, 
 # you can use the @before_kickoff and @after_kickoff decorators
 # https://docs.crewai.com/concepts/crews#example-crew-class-with-decorators
@@ -17,6 +19,12 @@ serper_api_key = os.getenv('SERPER_API_KEY')
 web_search_tool = SerperDevTool()
 csv_search_tool = CSVSearchTool(file_path='knowledge/leads.csv')
 csv_read_tool = FileReadTool(file_path='knowledge/leads.csv')
+
+google_llm = LLM(
+    model="gemini/gemini-2.0-flash",
+    api_key=google_api_key,
+    temperature=0.7
+)
 
 @CrewBase
 class SalesGuru():
@@ -35,7 +43,8 @@ class SalesGuru():
 		return Agent(
 			config=self.agents_config['lead_qualification'],
 			tools=[csv_search_tool, csv_read_tool, web_search_tool],
-			verbose=True
+			verbose=True,
+			llm=google_llm
 		)
 
 	# To learn more about structured task outputs, 

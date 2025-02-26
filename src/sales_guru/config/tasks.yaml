@@ -7,7 +7,7 @@ lead_qualification_task:
     3. Potential use cases for your products/services
     4. Decision-maker seniority and influence
     5. Current tech stack or solutions they might be using
-    Cleanse, normalize, and deduplicate the lead records as needed. Use the web to find more information about the lead if needed. There are no exceptions to this and ALL leads must be classified. 
+    Cleanse, normalize, and deduplicate the lead records as needed. Use the web to find more information about the lead if needed. There are no exceptions to this and **ALL** leads must be classified. 
   expected_output: >
     A JSON-formatted list of ALL lead records where each record includes:
     1. An additional field for lead score (0-100)
@@ -15,7 +15,7 @@ lead_qualification_task:
     3. Brief reasoning for the classification
     4. Potential value alignment between your company and the lead
     5. Recommended approach for initial outreach
-    All formatted and ready for prioritization in the sales process. There are no exceptions to this and ALL leads must be classified.
+    All formatted and ready for prioritization in the sales process. There are no exceptions to this and **ALL** leads must be classified.
 
 # prospect_research_task:
 #   description: >
