@@ -21,6 +21,9 @@ train_crew = "sales_guru.main:train"
 replay_crew = "sales_guru.main:replay"
 test_crew = "sales_guru.main:test"
 
+[tool.hatch.build.targets.wheel]
+packages = ["src/sales_guru"]
+
 [tool.setuptools]
 packages = ["sales_guru"]
 package-dir = {"" = "src"}
