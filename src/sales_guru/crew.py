@@ -4,10 +4,10 @@ import logging
 from dotenv import load_dotenv
 from crewai import Agent, Crew, Process, Task
 from crewai.project import CrewBase, agent, crew, task
-from crewai_tools import SerperDevTool, CSVSearchTool, FileReadTool
+from crewai_tools import SerperDevTool, CSVSearchTool, FileReadTool, WebsiteSearchTool, ScrapeWebsiteTool
 from crewai import LLM
 
-from sales_guru.task_monitor import TaskCompletionMonitor, ensure_task_completion, TokenMonitor
+from sales_guru.task_monitor import TaskCompletionMonitor, ensure_task_completion
 from sales_guru.tools import TaskValidatorTool
 
 # Configure logging
@@ -28,6 +28,7 @@ web_search_tool = SerperDevTool()
 csv_search_tool = CSVSearchTool(file_path='knowledge/leads.csv')
 csv_read_tool = FileReadTool(file_path='knowledge/leads.csv')
 task_validator_tool = TaskValidatorTool()
+scrape_web_tool = ScrapeWebsiteTool()
 
 class RateLimitedLLM:
     """Simplified wrapper around LLM to handle rate limits and empty responses"""
@@ -210,6 +211,17 @@ class SalesGuru():
 		# Enhance the agent with completion guarantees
 		return self.task_monitor.enhance_agent(agent)
 
+	@agent
+	def prospect_research(self) -> Agent:
+		agent = Agent(
+			config=self.agents_config['prospect_research'],
+			tools=[web_search_tool, task_validator_tool, scrape_web_tool],
+			verbose=True,
+			llm=google_llm
+		)
+		# Enhance the agent with completion guarantees
+		return self.task_monitor.enhance_agent(agent)
+
 	# To learn more about structured task outputs, 
 	# task dependencies, and task callbacks, check out the documentation:
 	# https://docs.crewai.com/concepts/tasks#overview-of-a-task
@@ -218,6 +230,16 @@ class SalesGuru():
 		task = Task(
 			config=self.tasks_config['lead_qualification_task'],
 			agent=self.lead_qualification()
+		)
+		# Enhance the task with completion guarantees
+		return self.task_monitor.enhance_task(task)
+	
+	@task
+	def prospect_research_task(self) -> Task:
+		task = Task(
+			config=self.tasks_config['prospect_research_task'],
+			agent=self.prospect_research(),
+			context=[self.lead_qualification_task()]
 		)
 		# Enhance the task with completion guarantees
 		return self.task_monitor.enhance_task(task)
@@ -239,8 +261,8 @@ class SalesGuru():
 		# https://docs.crewai.com/concepts/knowledge#what-is-knowledge
 
 		return Crew(
-			agents=[self.lead_qualification()], # Automatically created by the @agent decorator
-			tasks=[self.lead_qualification_task()], # Only include task agents, not the supervisor task
+			agents=[self.lead_qualification(), self.prospect_research()], # Automatically created by the @agent decorator
+			tasks=[self.lead_qualification_task(), self.prospect_research_task()], # Only include task agents, not the supervisor task
 			manager_agent=self.supervisor_agent(),
 			verbose=True,
 			process=Process.hierarchical, # Using hierarchical process for manager supervision

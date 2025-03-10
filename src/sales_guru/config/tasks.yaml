@@ -10,18 +10,48 @@ lead_qualification_task:
     Cleanse, normalize, and deduplicate the lead records as needed. Use the web to find more information about the lead if needed. **ALL** leads must be classified and there are no exceptions to these rules. 
   expected_output: >
     A JSON-formatted list of ALL lead records where each record includes:
-    1. An additional field for lead score (0-100)
-    2. Classification (HOT, WARM, or COLD)
-    3. Brief reasoning for the classification
-    4. Potential value alignment between your company and the lead
-    5. Recommended approach for initial outreach
+    1. Lead name 
+    2. Company name
+    3. Email address
+    4. Phone number
+    5. An additional field for lead score (0-100)
+    6. Classification (HOT, WARM, or COLD)
+    7. Brief reasoning for the classification
+    8. Potential value alignment between your company and the lead
+    9. Recommended approach for initial outreach
     All formatted and ready for prioritization in the sales process. **ALL** leads must be classified and there are no exceptions to these rules.
 
-# prospect_research_task:
-#   description: >
-#     Enrich each lead with detailed company and decision-maker information by gathering data from LinkedIn, websites, and news articles.
-#   expected_output: >
-#     An enriched dataset where each lead record includes company details and relevant decision-maker insights.
+prospect_research_task:
+  description: >
+    Enrich **ALL** HOT and WARM leads with detailed company and decision-maker information by gathering data from the web.
+    For each high-priority lead, research and collect:
+    1. Company information: industry, size, revenue, funding, growth trajectory, tech stack, products/services
+    2. Lead name details: role, responsibilities, career history, educational background, social media presence
+    3. Recent company news, press releases, or significant events
+    4. Potential pain points or challenges the company might be facing
+    5. Current solutions or vendors they might be using
+    6. Evidence of why the lead needs your solution NOW 
+    Focus on information that would be most relevant for personalized outreach and understanding potential fit.
+    
+    IMPORTANT TIME MANAGEMENT GUIDELINES:
+    - Analyze ONLY HOT and WARM leads - completely ignore COLD leads
+    - Allocate research time proportionally based on lead classification: HOT, WARM 
+    - For each lead, spend no more than 2-3 web searches to gather essential information
+    - If specific information is difficult to find after a reasonable effort, note it as "Information not readily available" and move on
+    - Ensure ALL HOT and WARM leads receive attention - do not skip any high-priority leads
+    - Focus on quality over quantity - a few highly relevant insights are more valuable than extensive general information
+  expected_output: >
+    A JSON-formatted list of enriched HOT and WARM lead records where each record includes:
+    1. Detailed company profile with industry, size, revenue (if available), products/services
+    2. Lead name insights including role details, background, and areas of responsibility
+    3. Recent company developments or news that might create sales opportunities
+    4. Identified pain points or challenges that your solution could address
+    5. Current solutions or competitors' products they might be using
+    6. Timely evidence of why the lead needs your solution NOW (based on latest news, market trends, or digital footprints)
+    7. Recommended talking points for initial outreach based on the research
+    The enriched data should be structured and formatted for easy consumption by the Email & Outreach Agent.
+    
+    For any information that could not be found after a reasonable search effort, include a note stating "Information not readily available" rather than leaving fields empty.
 
 # email_outreach_task:
 #   description: >
