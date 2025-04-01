@@ -222,6 +222,17 @@ class SalesGuru():
 		# Enhance the agent with completion guarantees
 		return self.task_monitor.enhance_agent(agent)
 
+	@agent
+	def email_outreach(self) -> Agent:
+		agent = Agent(
+			config=self.agents_config['email_outreach'],
+			tools=[task_validator_tool],
+			verbose=True,
+			llm=google_llm
+		)
+		# Enhance the agent with completion guarantees
+		return self.task_monitor.enhance_agent(agent)
+
 	# To learn more about structured task outputs, 
 	# task dependencies, and task callbacks, check out the documentation:
 	# https://docs.crewai.com/concepts/tasks#overview-of-a-task
@@ -244,6 +255,16 @@ class SalesGuru():
 		# Enhance the task with completion guarantees
 		return self.task_monitor.enhance_task(task)
 	
+	@task
+	def email_outreach_task(self) -> Task:
+		task = Task(
+			config=self.tasks_config['email_outreach_task'],
+			agent=self.email_outreach(),
+			context=[self.prospect_research_task()]
+		)
+		# Enhance the task with completion guarantees
+		return self.task_monitor.enhance_task(task)
+	
 	@agent
 	def supervisor_agent(self) -> Agent:
 		agent = Agent(
@@ -261,8 +282,8 @@ class SalesGuru():
 		# https://docs.crewai.com/concepts/knowledge#what-is-knowledge
 
 		return Crew(
-			agents=[self.lead_qualification(), self.prospect_research()], # Automatically created by the @agent decorator
-			tasks=[self.lead_qualification_task(), self.prospect_research_task()], # Only include task agents, not the supervisor task
+			agents=[self.lead_qualification(), self.prospect_research(), self.email_outreach()], # Automatically created by the @agent decorator
+			tasks=[self.lead_qualification_task(), self.prospect_research_task(), self.email_outreach_task()], # Only include task agents, not the supervisor task
 			manager_agent=self.supervisor_agent(),
 			verbose=True,
 			process=Process.hierarchical, # Using hierarchical process for manager supervision

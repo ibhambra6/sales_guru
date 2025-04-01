@@ -53,11 +53,46 @@ prospect_research_task:
     
     For any information that could not be found after a reasonable search effort, include a note stating "Information not readily available" rather than leaving fields empty.
 
-# email_outreach_task:
-#   description: >
-#     Generate personalized outreach emails and messages using CRM data and interaction history via GPT-based templates.
-#   expected_output: >
-#     A list of customized email messages for each lead, formatted in plain text.
+email_outreach_task:
+  description: >
+    Generate highly personalized and compelling email outreach for ALL HOT and WARM leads using the enriched data 
+    provided by the Prospect Research Agent. For each high-potential lead, create emails that:
+    
+    1. Have eye-catching subject lines that reference specific company challenges or opportunities
+    2. Establish immediate relevance with personalized opening lines referencing recent news or achievements
+    3. Clearly articulate value proposition in context of their specific business needs
+    4. Demonstrate understanding of their pain points with specific examples
+    5. Include social proof or case studies relevant to their industry
+    6. Feature a clear, low-friction call-to-action
+    7. Maintain professional but conversational tone with natural language
+    
+    Tailor the messaging style based on the lead's seniority, industry, and cultural context. HOT leads should receive 
+    extra attention with more deeply personalized content. For each lead, leverage all available information:
+    
+    - Company profile details (industry, size, challenges)
+    - Lead's role and background information
+    - Pain points identified in research
+    - Recent company news or developments
+    - Competitive landscape and current solutions
+    - Urgency drivers that make your solution timely
+    
+    The goal is to create emails that feel individually crafted, not mass-produced, with messaging that directly 
+    addresses why your solution is uniquely valuable to their specific situation right now.
+  expected_output: >
+    A JSON-formatted list of email templates for ALL HOT and WARM leads where each template includes:
+    
+    1. Lead name and company
+    2. Classification (HOT or WARM)
+    3. Compelling subject line
+    4. Personalized email body with appropriate greeting, introduction, value proposition, pain point addressing, social proof, and call-to-action
+    5. Suggested follow-up timing (immediate, 3 days, 1 week)
+    6. Alternative contact channels if available (LinkedIn, etc.)
+    7. Recommended A/B test variations for subject lines or opening paragraphs
+    
+    Each email should be fully ready to send with all placeholder text replaced with specific, personalized content.
+    The output should prioritize quality over quantity, with special attention given to HOT leads to maximize 
+    conversion potential. All emails must maintain a professional tone while being conversational enough to stand 
+    out from typical sales messages.
 
 # sales_call_prep_task:
 #   description: >
