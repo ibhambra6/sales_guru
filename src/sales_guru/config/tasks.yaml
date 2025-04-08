@@ -79,7 +79,7 @@ email_outreach_task:
     The goal is to create emails that feel individually crafted, not mass-produced, with messaging that directly 
     addresses why your solution is uniquely valuable to their specific situation right now.
   expected_output: >
-    A JSON-formatted list of email templates for ALL HOT and WARM leads where each template includes:
+    A **JSON-formatted list** of email templates for ALL HOT and WARM leads where each template includes:
     
     1. Lead name and company
     2. Classification (HOT or WARM)

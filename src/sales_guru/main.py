@@ -20,10 +20,42 @@ def run():
         'company_name': company_name,
         'company_description': company_description
     }
-    try:
-        SalesGuru().kickoff(inputs=inputs)
-    except Exception as e:
-        raise Exception(f"An error occurred while running the crew: {e}")
+    
+    # Add global retry logic with exponential backoff
+    import time
+    import random
+    import logging
+    
+    max_global_retries = 3
+    global_retries = 0
+    
+    while global_retries <= max_global_retries:
+        try:
+            SalesGuru().kickoff(inputs=inputs)
+            # If we get here, execution was successful
+            return
+        except Exception as e:
+            error_msg = str(e).lower()
+            global_retries += 1
+            
+            # Check if this is a network connectivity error (connection reset)
+            if any(x in error_msg for x in ["connection reset", "connection error", "timeout", "network", "[errno", "socket"]):
+                if global_retries <= max_global_retries:
+                    # Calculate wait time with exponential backoff and jitter
+                    base_wait_time = min(2 ** (global_retries + 2), 300)  # Cap at 5 minutes
+                    jitter = random.uniform(0.8, 1.2)  # Add ±20% jitter
+                    wait_time = base_wait_time * jitter
+                    
+                    logging.error(f"Network connectivity error: {e}")
+                    logging.info(f"Global retry {global_retries}/{max_global_retries}. Waiting {wait_time:.1f} seconds before retry...")
+                    time.sleep(wait_time)
+                    continue
+            
+            # For non-network errors or if we've exceeded our retries, just raise the exception
+            raise Exception(f"An error occurred while running the crew: {e}")
+    
+    # If we get here, we've exhausted all retries
+    raise Exception(f"Failed to run crew after {max_global_retries} global retries due to persistent network issues.")
 
 
 def train():

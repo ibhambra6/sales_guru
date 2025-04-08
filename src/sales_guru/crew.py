@@ -19,6 +19,7 @@ load_dotenv()
 # Get API key from environment variables
 serper_api_key = os.getenv('SERPER_API_KEY')
 google_api_key = os.getenv('GOOGLE_API_KEY')
+openai_api_key = os.getenv('OPENAI_API_KEY')
 # If you want to run a snippet of code before or after the crew starts, 
 # you can use the @before_kickoff and @after_kickoff decorators
 # https://docs.crewai.com/concepts/crews#example-crew-class-with-decorators
@@ -94,21 +95,35 @@ class RateLimitedLLM:
                 last_error = e
                 error_msg = str(e).lower()
                 
+                # Calculate wait time with exponential backoff and jitter
+                # Base wait time increases exponentially with each retry
+                base_wait_time = min(2 ** (retries + 2), 300) # exponential backoff with cap at 5 min
+                # Add jitter (±20% randomness) to prevent thundering herd problem
+                import random
+                jitter = random.uniform(0.8, 1.2)
+                wait_time = base_wait_time * jitter
+                
                 # Check for common errors that can be retried
                 if any(x in error_msg for x in ["rate limit", "429", "too many requests"]):
                     # Rate limit error
                     retries += 1
-                    wait_time = min(60 * retries, 300)  # Simple backoff with max 5 min wait
-                    
-                    logger.warning(f"Rate limit error. Waiting {wait_time}s before retry {retries}/{self.max_retries}")
+                    logger.warning(f"Rate limit error. Waiting {wait_time:.1f}s before retry {retries}/{self.max_retries}")
                     time.sleep(wait_time)
                 
                 elif "invalid response" in error_msg and "empty" in error_msg:
                     # Empty response error
                     retries += 1
-                    wait_time = min(30 * retries, 180)  # Simple backoff with max 3 min wait
+                    logger.warning(f"Empty response error. Waiting {wait_time:.1f}s before retry {retries}/{self.max_retries}")
+                    time.sleep(wait_time)
                     
-                    logger.warning(f"Empty response error. Waiting {wait_time}s before retry {retries}/{self.max_retries}")
+                    # Force fallback if we've tried too many times
+                    if retries > self.max_retries:
+                        force_fallback = True
+                
+                # Network connectivity errors
+                elif any(x in error_msg for x in ["connection reset", "connection error", "timeout", "network", "[errno", "socket"]):
+                    retries += 1
+                    logger.warning(f"Network connectivity error: {e}. Waiting {wait_time:.1f}s before retry {retries}/{self.max_retries}")
                     time.sleep(wait_time)
                     
                     # Force fallback if we've tried too many times
@@ -172,6 +187,21 @@ google_llm = RateLimitedLLM(
     temperature=0.7
 )
 
+openai_llm = RateLimitedLLM(
+    model="gpt-4o",
+    api_key=openai_api_key,
+    temperature=0.7
+)
+
+# Configure LiteLLM to handle network connectivity issues better
+import litellm
+# Set higher number of retries for API calls
+litellm.num_retries = 5
+# Increase timeout for API calls to reduce chances of connection reset
+litellm.request_timeout = 120
+# Enable verbose logging for debugging
+litellm.set_verbose = True
+
 # Apply our safe generate method to handle empty responses at a deeper level
 # Store the original method first
 if hasattr(google_llm.base_llm, '_generate'):
@@ -228,7 +258,7 @@ class SalesGuru():
 			config=self.agents_config['email_outreach'],
 			tools=[task_validator_tool],
 			verbose=True,
-			llm=google_llm
+            llm=openai_llm
 		)
 		# Enhance the agent with completion guarantees
 		return self.task_monitor.enhance_agent(agent)
@@ -260,7 +290,7 @@ class SalesGuru():
 		task = Task(
 			config=self.tasks_config['email_outreach_task'],
 			agent=self.email_outreach(),
-			context=[self.prospect_research_task()]
+			context=[self.prospect_research_task(), self.lead_qualification_task()]
 		)
 		# Enhance the task with completion guarantees
 		return self.task_monitor.enhance_task(task)

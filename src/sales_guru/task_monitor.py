@@ -8,6 +8,7 @@ from typing import Callable
 from crewai import Task, Agent
 from crewai.task import TaskOutput
 import importlib
+import random
 
 # Configure logging
 logging.basicConfig(
@@ -231,45 +232,68 @@ def ensure_task_completion(func):
             # Create a new monitor if one doesn't exist
             monitor = TaskCompletionMonitor()
         
-        try:
-            # Execute the original function
-            result = func(*args, **kwargs)
-            
-            # Log task summary
-            monitor.log_task_summary()
-            
-            return result
-            
-        except Exception as e:
-            error_msg = str(e).lower()
-            
-            # Handle rate limit errors
-            if "rate limit" in error_msg or "429" in error_msg or "too many requests" in error_msg:
-                logger.warning(f"Rate limit error encountered: {e}")
+        max_retries = 3
+        retries = 0
+        
+        while retries <= max_retries:
+            try:
+                # Execute the original function
+                result = func(*args, **kwargs)
                 
-                # Wait for a reset
-                wait_time = 60
-                logger.info(f"Waiting {wait_time} seconds before retry...")
-                time.sleep(wait_time)
+                # Log task summary
+                monitor.log_task_summary()
                 
-                # Try again
-                return func(*args, **kwargs)
+                return result
                 
-            # Handle empty response errors
-            elif "invalid response" in error_msg and "empty" in error_msg:
-                logger.warning(f"Empty response error encountered: {e}")
+            except Exception as e:
+                error_msg = str(e).lower()
+                retries += 1
                 
-                # Wait some time before retrying
-                wait_time = 30
-                logger.info(f"Waiting {wait_time} seconds before retry...")
-                time.sleep(wait_time)
+                # Calculate wait time with exponential backoff
+                base_wait_time = min(2 ** (retries + 2), 300)  # exponential backoff capped at 5 min
+                jitter = random.uniform(0.8, 1.2)  # Add ±20% jitter
+                wait_time = base_wait_time * jitter
                 
-                # Try again
-                return func(*args, **kwargs)
+                # Handle rate limit errors
+                if any(x in error_msg for x in ["rate limit", "429", "too many requests"]):
+                    logger.warning(f"Rate limit error encountered: {e}")
+                    
+                    if retries <= max_retries:
+                        logger.info(f"Waiting {wait_time:.1f} seconds before retry {retries}/{max_retries}...")
+                        time.sleep(wait_time)
+                        continue
+                    else:
+                        raise
+                    
+                # Handle empty response errors
+                elif "invalid response" in error_msg and "empty" in error_msg:
+                    logger.warning(f"Empty response error encountered: {e}")
+                    
+                    if retries <= max_retries:
+                        logger.info(f"Waiting {wait_time:.1f} seconds before retry {retries}/{max_retries}...")
+                        time.sleep(wait_time)
+                        continue
+                    else:
+                        raise
                 
-            else:
-                # Re-raise other errors
-                raise
+                # Handle network connectivity errors
+                elif any(x in error_msg for x in ["connection reset", "connection error", "timeout", "network", "[errno", "socket"]):
+                    logger.warning(f"Network connectivity error encountered: {e}")
+                    
+                    if retries <= max_retries:
+                        logger.info(f"Waiting {wait_time:.1f} seconds before retry {retries}/{max_retries}...")
+                        time.sleep(wait_time)
+                        continue
+                    else:
+                        raise
+                
+                else:
+                    # Re-raise other errors
+                    raise
+        
+        # If we've reached here, we've exhausted all retries
+        logger.error(f"Max retries ({max_retries}) exceeded for operation.")
+        raise Exception(f"Operation failed after {max_retries} retries. Last error: {e}")
     
     return wrapper
 

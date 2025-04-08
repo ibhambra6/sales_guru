@@ -11,3 +11,4 @@ src/sales_guru/__pycache__/crew.cpython-312.pyc
 src/sales_guru/__pycache__/main.cpython-312.pyc
 src/sales_guru/tools/__pycache__/
 src/sales_guru.egg-info/
+build/
