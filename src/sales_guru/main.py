@@ -14,11 +14,11 @@ def run():
     """
     Run the crew interactively with task completion guarantees.
     """
-    company_name = input("Enter the company name: ")
-    company_description = input("Enter the company description: ")
+    # company_name = input("Enter the company name: ")
+    # company_description = input("Enter the company description: ")
     inputs = {
-        'company_name': company_name,
-        'company_description': company_description
+        'company_name': 'Oceaneering Mobile Robotics',
+        'company_description': 'A division of Oceaneering International that designs, manufactures, and maintains innovative mobile robotics solutions for material handling and logistics challenges. With over 30 years of experience, OMR has deployed more than 1,700 robots globally across various industries. Their product portfolio includes autonomous mobile robots (AMRs) like the UniMover series and MaxMover forklifts, featuring natural feature navigation, safety lidar, and high-performance battery systems. OMR robots can operate in either AMR mode with obstacle avoidance or AGV mode for increased speed, and can work together as mixed fleets to provide comprehensive solutions.'
     }
     
     # Add global retry logic with exponential backoff
