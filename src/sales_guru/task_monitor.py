@@ -4,11 +4,12 @@ import uuid
 import time
 import tiktoken
 from functools import wraps
-from typing import Callable
+from typing import Callable, Dict, List, Optional, Any, Union
 from crewai import Task, Agent
 from crewai.task import TaskOutput
 import importlib
 import random
+from pydantic import BaseModel
 
 # Configure logging
 logging.basicConfig(
@@ -63,9 +64,72 @@ def apply_crewai_patches():
 # Apply the patches when this module is imported
 apply_crewai_patches()
 
+class TokenMonitor:
+    """Monitor and manage token usage to avoid rate limits"""
+    
+    def __init__(self, model: str = "gpt-4o", token_limit_per_min: int = 28000):
+        """
+        Initialize the token monitor.
+        
+        Args:
+            model: The model name to use for encoding/counting tokens
+            token_limit_per_min: Maximum tokens per minute to stay under rate limits
+        """
+        self.model = model
+        self.token_limit_per_min = token_limit_per_min
+        self.tokens_used_in_current_minute = 0
+        self.last_reset_time = time.time()
+        
+        try:
+            self.encoding = tiktoken.encoding_for_model(model.replace("gemini/", ""))
+        except Exception:
+            # Fallback to cl100k_base encoding if model-specific encoding not available
+            self.encoding = tiktoken.get_encoding("cl100k_base")
+            
+    def count_tokens(self, text: str) -> int:
+        """Count the number of tokens in a text string"""
+        if not text:
+            return 0
+        return len(self.encoding.encode(text))
+        
+    def wait_for_token_reset(self):
+        """Wait until token usage is reset based on time elapsed"""
+        # Check time since last reset
+        elapsed_time = time.time() - self.last_reset_time
+        
+        # If less than a minute has passed and we're over the limit, wait
+        if elapsed_time < 60 and self.tokens_used_in_current_minute >= self.token_limit_per_min:
+            wait_time = max(60 - elapsed_time, 0)
+            logger.info(f"Rate limit approaching. Waiting {wait_time:.1f} seconds before continuing...")
+            time.sleep(wait_time)
+            # Reset token count after waiting
+            self.tokens_used_in_current_minute = 0
+            self.last_reset_time = time.time()
+        # If more than a minute has passed, reset the counter
+        elif elapsed_time >= 60:
+            self.tokens_used_in_current_minute = 0
+            self.last_reset_time = time.time()
+        
+    def truncate_to_fit(self, text: str, max_tokens: int) -> str:
+        """Truncate text to fit within a maximum token limit"""
+        if not text:
+            return ""
+            
+        encoded = self.encoding.encode(text)
+        
+        if len(encoded) <= max_tokens:
+            return text
+            
+        # Truncate and add a message indicating truncation
+        truncated_encoded = encoded[:max_tokens-50]  # Leave room for message
+        truncated_text = self.encoding.decode(truncated_encoded)
+        
+        return truncated_text + "\n\n[Content was truncated to fit token limits]"
+
+
 class TaskCompletionMonitor:
     """
-    A simplified monitor to ensure tasks are completed successfully.
+    A monitor to ensure tasks are completed successfully.
     Handles empty responses and rate limits gracefully.
     """
     
@@ -95,7 +159,7 @@ class TaskCompletionMonitor:
 
     def create_task_callback(self, task: Task) -> Callable:
         """
-        Create a simple callback function to monitor task execution.
+        Create a callback function to monitor task execution.
         
         Args:
             task: The CrewAI task to monitor
@@ -116,14 +180,7 @@ class TaskCompletionMonitor:
             attempt_number = self.task_attempt_counter[task_id]
             
             # Extract the output value
-            if hasattr(output, 'result'):
-                result_value = output.result
-            elif hasattr(output, 'output'):
-                result_value = output.output
-            elif hasattr(output, 'raw_output'):
-                result_value = output.raw_output
-            else:
-                result_value = output
+            result_value = self._extract_output_value(output)
             
             # Log the attempt
             if self.enable_logging:
@@ -135,7 +192,7 @@ class TaskCompletionMonitor:
                 "timestamp": output.created_at.isoformat() if hasattr(output, "created_at") else None
             })
             
-            # Simple validation: just check if output exists and isn't empty
+            # Validate if output exists and isn't empty
             if not result_value:
                 if attempt_number < self.max_retries:
                     logger.warning(f"Task {task_id} - Empty result. Retry {attempt_number}/{self.max_retries}")
@@ -152,9 +209,19 @@ class TaskCompletionMonitor:
         
         return callback
     
+    def _extract_output_value(self, output: Any) -> Any:
+        """Extract the actual output value from different output formats"""
+        if hasattr(output, 'result'):
+            return output.result
+        elif hasattr(output, 'output'):
+            return output.output
+        elif hasattr(output, 'raw_output'):
+            return output.raw_output
+        return output
+    
     def enhance_task(self, task: Task) -> Task:
         """
-        Enhance a task with simple monitoring and completion guarantees.
+        Enhance a task with monitoring and completion guarantees.
         
         Args:
             task: The CrewAI task to enhance
@@ -178,7 +245,7 @@ class TaskCompletionMonitor:
         else:
             task.callback = monitor_callback
         
-        # Add simple completion instructions
+        # Add completion instructions
         if hasattr(task, "description") and task.description:
             task.description = task.description.strip()
             task.description += "\n\nIMPORTANT: You MUST complete this task fully with all required information."
@@ -187,7 +254,7 @@ class TaskCompletionMonitor:
     
     def enhance_agent(self, agent: Agent) -> Agent:
         """
-        Add simple enhancements to an agent.
+        Add enhancements to an agent.
         
         Args:
             agent: The CrewAI agent to enhance
@@ -198,154 +265,138 @@ class TaskCompletionMonitor:
         # Add basic completion reminder to agent's goal
         if agent.goal:
             agent.goal = agent.goal.strip()
-            agent.goal += " Complete all tasks thoroughly and accurately."
+            if "complete" not in agent.goal.lower() and "thorough" not in agent.goal.lower():
+                agent.goal += "\n\nAlways provide complete and thorough responses."
+        
+        # Add rate limit awareness to agent's backstory
+        if agent.backstory:
+            agent.backstory = agent.backstory.strip()
+            if "rate limit" not in agent.backstory.lower():
+                agent.backstory += "\n\nYou are aware of rate limits and will pace your API calls appropriately."
         
         return agent
     
+    def validate_task_output(self, task: Task, output: Union[str, Dict, List, BaseModel]) -> Dict:
+        """
+        Validate if a task output meets requirements.
+        
+        Args:
+            task: The task to validate output for
+            output: The output to validate
+            
+        Returns:
+            Validation result dictionary
+        """
+        validation_result = {
+            "is_valid": False,
+            "issues": [],
+            "recommendations": []
+        }
+        
+        # For Pydantic models, validation happens automatically during parsing
+        # If we received a Pydantic model, it means it passed validation
+        if hasattr(output, '__pydantic_fields__') or hasattr(output, '__pydantic_model__'):
+            validation_result["is_valid"] = True
+            validation_result["info"] = "Pydantic schema validation passed"
+            return validation_result
+        
+        # Basic validation: check if output exists and isn't empty
+        if not output:
+            validation_result["issues"].append("Empty or null output")
+            validation_result["recommendations"].append("Ensure output contains all required information")
+            return validation_result
+            
+        # Check if the output has a reasonable length
+        if isinstance(output, str) and len(output) < 10:
+            validation_result["issues"].append("Output is suspiciously short")
+            validation_result["recommendations"].append("Provide a more detailed response")
+            return validation_result
+            
+        # If we get here without issues, consider it valid
+        validation_result["is_valid"] = True
+        return validation_result
+    
     def log_task_summary(self):
-        """Generate a simple log summary of task execution status"""
+        """Log a summary of all task attempts"""
         if not self.enable_logging:
             return
             
-        total_tasks = len(self.task_history)
-        tasks_with_retries = sum(1 for task_id, attempts in self.task_attempt_counter.items() if attempts > 1)
-        
-        logger.info(f"Task Execution Summary: {total_tasks} tasks completed")
-        logger.info(f"Tasks requiring retries: {tasks_with_retries}")
-        
         for task_id, attempts in self.task_attempt_counter.items():
-            logger.info(f"Task {task_id}: {attempts} attempt(s)")
+            logger.info(f"Task {task_id} - Total attempts: {attempts}")
+            
+        logger.info(f"Total tasks monitored: {len(self.task_attempt_counter)}")
 
 
 def ensure_task_completion(func):
     """
-    Simplified decorator to handle common task completion errors.
-    Focuses on empty responses and rate limits.
+    Decorator to ensure tasks are completed successfully.
     """
     @wraps(func)
     def wrapper(*args, **kwargs):
         # Get the monitor instance from the class if available
-        self_arg = args[0] if args else None
-        monitor = getattr(self_arg, "task_monitor", None)
+        monitor = None
+        if args and hasattr(args[0], 'task_monitor'):
+            monitor = args[0].task_monitor
+        else:
+            # Create a temporary monitor if none exists
+            monitor = TaskCompletionMonitor(enable_logging=True)
+            
+        logger.info(f"Starting execution with task completion guarantees: {func.__name__}")
         
-        if not monitor:
-            # Create a new monitor if one doesn't exist
-            monitor = TaskCompletionMonitor()
-        
+        # Global retry logic
         max_retries = 3
         retries = 0
+        last_error = None
         
         while retries <= max_retries:
             try:
-                # Execute the original function
+                # Call the original function
                 result = func(*args, **kwargs)
                 
-                # Log task summary
-                monitor.log_task_summary()
-                
-                return result
-                
-            except Exception as e:
-                error_msg = str(e).lower()
-                retries += 1
-                
-                # Calculate wait time with exponential backoff
-                base_wait_time = min(2 ** (retries + 2), 300)  # exponential backoff capped at 5 min
-                jitter = random.uniform(0.8, 1.2)  # Add ±20% jitter
-                wait_time = base_wait_time * jitter
-                
-                # Handle rate limit errors
-                if any(x in error_msg for x in ["rate limit", "429", "too many requests"]):
-                    logger.warning(f"Rate limit error encountered: {e}")
-                    
-                    if retries <= max_retries:
-                        logger.info(f"Waiting {wait_time:.1f} seconds before retry {retries}/{max_retries}...")
-                        time.sleep(wait_time)
-                        continue
-                    else:
-                        raise
-                    
-                # Handle empty response errors
-                elif "invalid response" in error_msg and "empty" in error_msg:
-                    logger.warning(f"Empty response error encountered: {e}")
-                    
-                    if retries <= max_retries:
-                        logger.info(f"Waiting {wait_time:.1f} seconds before retry {retries}/{max_retries}...")
-                        time.sleep(wait_time)
-                        continue
-                    else:
-                        raise
-                
-                # Handle network connectivity errors
-                elif any(x in error_msg for x in ["connection reset", "connection error", "timeout", "network", "[errno", "socket"]):
-                    logger.warning(f"Network connectivity error encountered: {e}")
-                    
-                    if retries <= max_retries:
-                        logger.info(f"Waiting {wait_time:.1f} seconds before retry {retries}/{max_retries}...")
-                        time.sleep(wait_time)
-                        continue
-                    else:
-                        raise
-                
+                # Check if result exists (allowing for falsy results that are not None)
+                if result is not None:
+                    # Log summary if available
+                    if monitor:
+                        monitor.log_task_summary()
+                    return result
                 else:
-                    # Re-raise other errors
-                    raise
+                    # Empty result, retry
+                    retries += 1
+                    if retries > max_retries:
+                        logger.error(f"Empty result after {max_retries} retries")
+                        break
+                        
+                    wait_time = 5 * retries
+                    logger.warning(f"Empty result. Retrying in {wait_time} seconds...")
+                    time.sleep(wait_time)
+            except Exception as e:
+                last_error = e
+                retries += 1
+                error_msg = str(e).lower()
+                
+                # Check if this is a rate limit or network error
+                if any(x in error_msg for x in [
+                    "rate limit", "429", "too many requests", 
+                    "connection reset", "connection error", "timeout",
+                    "network", "empty response"
+                ]):
+                    if retries <= max_retries:
+                        wait_time = min(2 ** (retries + 2), 300)
+                        jitter = random.uniform(0.8, 1.2)
+                        wait_time = wait_time * jitter
+                        
+                        logger.warning(f"Recoverable error: {e}. Retry {retries}/{max_retries} in {wait_time:.1f}s")
+                        time.sleep(wait_time)
+                        continue
+                
+                # Re-raise the exception for non-recoverable errors
+                logger.error(f"Non-recoverable error: {e}")
+                raise
         
-        # If we've reached here, we've exhausted all retries
-        logger.error(f"Max retries ({max_retries}) exceeded for operation.")
-        raise Exception(f"Operation failed after {max_retries} retries. Last error: {e}")
+        # If we get here, we've exhausted all retries
+        if last_error:
+            raise last_error
+        else:
+            raise Exception(f"Failed to complete {func.__name__} successfully after {max_retries} retries") 
     
-    return wrapper
-
-
-class TokenMonitor:
-    """Simplified utility to monitor token usage and prevent rate limit errors"""
-    
-    def __init__(self, model="gpt-4o", token_limit_per_min=28000):
-        """
-        Initialize the token monitor.
-        
-        Args:
-            model: The model name to use for token counting
-            token_limit_per_min: Token limit per minute
-        """
-        self.model = model
-        self.token_limit_per_min = token_limit_per_min
-        self.tokens_used_in_window = 0
-        self.window_start_time = time.time()
-        self.encoding = tiktoken.encoding_for_model(model) if model.startswith("gpt") else tiktoken.get_encoding("cl100k_base")
-        
-    def count_tokens(self, text: str) -> int:
-        """Count the number of tokens in a text string"""
-        if not text:
-            return 0
-        return len(self.encoding.encode(text))
-        
-    def wait_for_token_reset(self):
-        """Wait until the rate limit window resets"""
-        current_time = time.time()
-        seconds_since_window_start = current_time - self.window_start_time
-        
-        if seconds_since_window_start < 60:
-            # Calculate how many seconds to wait
-            wait_time = 60 - seconds_since_window_start
-            logger.warning(f"Approaching rate limit. Waiting {wait_time:.1f} seconds for reset")
-            time.sleep(wait_time)
-            
-        # Reset the window
-        self.tokens_used_in_window = 0
-        self.window_start_time = time.time()
-    
-    def truncate_to_fit(self, text: str, max_tokens: int) -> str:
-        """Truncate text to fit within max_tokens"""
-        if not text:
-            return ""
-            
-        encoded = self.encoding.encode(text)
-        if len(encoded) <= max_tokens:
-            return text
-            
-        # Truncate and add an indicator
-        truncated_encoded = encoded[:max_tokens-3]
-        truncated_text = self.encoding.decode(truncated_encoded)
-        return truncated_text + "..." 
+    return wrapper 

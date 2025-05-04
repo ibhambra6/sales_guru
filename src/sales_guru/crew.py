@@ -1,14 +1,19 @@
 import os
 import time
 import logging
+import random
 from dotenv import load_dotenv
-from crewai import Agent, Crew, Process, Task
+from crewai import Agent, Crew, Process, Task, LLM
 from crewai.project import CrewBase, agent, crew, task
 from crewai_tools import SerperDevTool, CSVSearchTool, FileReadTool, WebsiteSearchTool, ScrapeWebsiteTool
-from crewai import LLM
+from pydantic import BaseModel
 
 from sales_guru.task_monitor import TaskCompletionMonitor, ensure_task_completion
 from sales_guru.tools import TaskValidatorTool
+from sales_guru.schemas import (
+    LeadQualificationResponse, ProspectResearchResponse, 
+    EmailOutreachResponse, SalesCallPrepResponse
+)
 
 # Configure logging
 logger = logging.getLogger("SalesGuru")
@@ -16,7 +21,7 @@ logger = logging.getLogger("SalesGuru")
 # Load environment variables from .env file
 load_dotenv()
 
-# Get API key from environment variables
+# Get API keys from environment variables
 serper_api_key = os.getenv('SERPER_API_KEY')
 google_api_key = os.getenv('GOOGLE_API_KEY')
 openai_api_key = os.getenv('OPENAI_API_KEY')
@@ -32,10 +37,9 @@ task_validator_tool = TaskValidatorTool()
 scrape_web_tool = ScrapeWebsiteTool()
 
 class RateLimitedLLM:
-    """Simplified wrapper around LLM to handle rate limits and empty responses"""
+    """Wrapper around LLM to handle rate limits and empty responses with exponential backoff"""
     
     def __init__(self, model, api_key, temperature=0.7, max_retries=3):
-        # Initialize the base LLM
         self.model_name = model
         self.base_llm = LLM(
             model=model,
@@ -43,6 +47,11 @@ class RateLimitedLLM:
             temperature=temperature
         )
         self.max_retries = max_retries
+        
+        # Apply our safe generate method to handle empty responses
+        if hasattr(self.base_llm, '_generate'):
+            self.base_llm._original_generate = self.base_llm._generate
+            self.base_llm._generate = self._safe_generate.__get__(self.base_llm)
         
     def __call__(self, *args, **kwargs):
         """Make the LLM callable directly"""
@@ -54,39 +63,30 @@ class RateLimitedLLM:
 
     def _is_empty_response(self, response):
         """Check if a response is empty or None"""
-        if response is None:
-            return True
-        if isinstance(response, str) and not response.strip():
-            return True
-        return False
+        return response is None or (isinstance(response, str) and not response.strip())
         
     def call(self, *args, **kwargs):
-        """
-        Handle LLM calls with retry logic for common errors
-        """
+        """Handle LLM calls with retry logic for common errors"""
         retries = 0
         last_error = None
         
-        # Add a signal to force a fallback response after too many attempts
-        force_fallback = False
-        
-        while retries <= self.max_retries and not force_fallback:
+        while retries <= self.max_retries:
             try:
                 # Get the raw response
                 response = self.base_llm.call(*args, **kwargs)
                 
                 # Check if response is empty
                 if self._is_empty_response(response):
-                    logger.warning(f"Got empty response from LLM on attempt {retries+1}/{self.max_retries+1}")
+                    logger.warning(f"Empty response from LLM on attempt {retries+1}/{self.max_retries+1}")
                     retries += 1
-                    wait_time = min(30 * retries, 180)
                     
                     if retries > self.max_retries:
-                        force_fallback = True
-                    else:
-                        logger.info(f"Waiting {wait_time}s before retry due to empty response")
-                        time.sleep(wait_time)
-                        continue
+                        break
+                        
+                    wait_time = self._calculate_wait_time(retries)
+                    logger.info(f"Waiting {wait_time:.1f}s before retry due to empty response")
+                    time.sleep(wait_time)
+                    continue
                 
                 # We have a valid non-empty response
                 return response
@@ -94,50 +94,38 @@ class RateLimitedLLM:
             except Exception as e:
                 last_error = e
                 error_msg = str(e).lower()
+                retries += 1
                 
-                # Calculate wait time with exponential backoff and jitter
-                # Base wait time increases exponentially with each retry
-                base_wait_time = min(2 ** (retries + 2), 300) # exponential backoff with cap at 5 min
-                # Add jitter (±20% randomness) to prevent thundering herd problem
-                import random
-                jitter = random.uniform(0.8, 1.2)
-                wait_time = base_wait_time * jitter
+                wait_time = self._calculate_wait_time(retries)
                 
                 # Check for common errors that can be retried
-                if any(x in error_msg for x in ["rate limit", "429", "too many requests"]):
-                    # Rate limit error
-                    retries += 1
-                    logger.warning(f"Rate limit error. Waiting {wait_time:.1f}s before retry {retries}/{self.max_retries}")
-                    time.sleep(wait_time)
-                
-                elif "invalid response" in error_msg and "empty" in error_msg:
-                    # Empty response error
-                    retries += 1
-                    logger.warning(f"Empty response error. Waiting {wait_time:.1f}s before retry {retries}/{self.max_retries}")
+                if any(x in error_msg for x in [
+                    "rate limit", "429", "too many requests", 
+                    "invalid response", "empty",
+                    "connection reset", "connection error", "timeout", 
+                    "network", "[errno", "socket"
+                ]):
+                    logger.warning(f"Error: {e}. Waiting {wait_time:.1f}s before retry {retries}/{self.max_retries}")
                     time.sleep(wait_time)
                     
-                    # Force fallback if we've tried too many times
                     if retries > self.max_retries:
-                        force_fallback = True
-                
-                # Network connectivity errors
-                elif any(x in error_msg for x in ["connection reset", "connection error", "timeout", "network", "[errno", "socket"]):
-                    retries += 1
-                    logger.warning(f"Network connectivity error: {e}. Waiting {wait_time:.1f}s before retry {retries}/{self.max_retries}")
-                    time.sleep(wait_time)
-                    
-                    # Force fallback if we've tried too many times
-                    if retries > self.max_retries:
-                        force_fallback = True
-                
+                        break
                 else:
                     # Other errors should be raised immediately
                     raise
         
         # If we've exhausted retries, return a fallback response
         logger.error(f"Max retries exceeded. Last error: {last_error}")
-        
-        # Return a guaranteed non-empty fallback response with task-specific information if possible
+        return self._get_fallback_response(*args, **kwargs)
+    
+    def _calculate_wait_time(self, retries):
+        """Calculate wait time with exponential backoff and jitter"""
+        base_wait_time = min(2 ** (retries + 2), 300)  # exponential backoff with cap at 5 min
+        jitter = random.uniform(0.8, 1.2)  # Add ±20% jitter
+        return base_wait_time * jitter
+    
+    def _get_fallback_response(self, *args, **kwargs):
+        """Return a guaranteed non-empty fallback response with task-specific information if possible"""
         fallback_prompt = args[0] if args else kwargs.get('prompt', '')
         is_lead_task = 'lead' in fallback_prompt.lower() if isinstance(fallback_prompt, str) else False
         
@@ -162,25 +150,28 @@ class RateLimitedLLM:
             """
         else:
             return "I apologize, but I encountered technical difficulties and couldn't complete this task properly. Please retry or simplify the request. As a fallback, I recommend proceeding with the most promising leads identified so far and scheduling follow-up communications."
-
-# Override the base LLM's _generate method directly to ensure we never return empty responses
-# This is the method that CrewAI calls internally
-def safe_generate(self, *args, **kwargs):
-    """Override the _generate method to ensure we never return empty responses"""
-    try:
-        response = self._original_generate(*args, **kwargs)
-        
-        # Check if response is empty or None
-        if response is None or not response:
-            logger.warning("Empty response detected in _generate method. Using fallback.")
-            return "I apologize, but I encountered a technical issue. Please consider this a partial response based on the available information."
+    
+    def _safe_generate(self, *args, **kwargs):
+        """Override the _generate method to ensure we never return empty responses"""
+        try:
+            response = self._original_generate(*args, **kwargs)
             
-        return response
-    except Exception as e:
-        logger.error(f"Error in _generate method: {e}")
-        return "I apologize, but I encountered a technical issue. Please consider this a partial response based on the available information."
+            if self._is_empty_response(response):
+                logger.warning("Empty response detected in _generate method. Using fallback.")
+                return "I apologize, but I encountered a technical issue. Please consider this a partial response based on the available information."
+                
+            return response
+        except Exception as e:
+            logger.error(f"Error in _generate method: {e}")
+            return "I apologize, but I encountered a technical issue. Please consider this a partial response based on the available information."
 
-# Initialize the rate-limited LLM
+# Configure LiteLLM to handle network connectivity issues better
+import litellm
+litellm.num_retries = 5  # Set higher number of retries for API calls
+litellm.request_timeout = 120  # Increase timeout for API calls
+litellm.set_verbose = True  # Enable verbose logging for debugging
+
+# Initialize the rate-limited LLMs
 google_llm = RateLimitedLLM(
     model="gemini/gemini-2.0-flash",
     api_key=google_api_key,
@@ -192,21 +183,6 @@ openai_llm = RateLimitedLLM(
     api_key=openai_api_key,
     temperature=0.7
 )
-
-# Configure LiteLLM to handle network connectivity issues better
-import litellm
-# Set higher number of retries for API calls
-litellm.num_retries = 5
-# Increase timeout for API calls to reduce chances of connection reset
-litellm.request_timeout = 120
-# Enable verbose logging for debugging
-litellm.set_verbose = True
-
-# Apply our safe generate method to handle empty responses at a deeper level
-# Store the original method first
-if hasattr(google_llm.base_llm, '_generate'):
-    google_llm.base_llm._original_generate = google_llm.base_llm._generate
-    google_llm.base_llm._generate = safe_generate.__get__(google_llm.base_llm)
 
 @CrewBase
 class SalesGuru():
@@ -236,7 +212,8 @@ class SalesGuru():
 			config=self.agents_config['lead_qualification'],
 			tools=[csv_search_tool, csv_read_tool, web_search_tool, task_validator_tool],
 			verbose=True,
-			llm=google_llm
+			llm=google_llm,
+			response_format=LeadQualificationResponse
 		)
 		# Enhance the agent with completion guarantees
 		return self.task_monitor.enhance_agent(agent)
@@ -247,7 +224,8 @@ class SalesGuru():
 			config=self.agents_config['prospect_research'],
 			tools=[web_search_tool, task_validator_tool, scrape_web_tool],
 			verbose=True,
-			llm=google_llm
+			llm=google_llm,
+			response_format=ProspectResearchResponse
 		)
 		# Enhance the agent with completion guarantees
 		return self.task_monitor.enhance_agent(agent)
@@ -258,7 +236,8 @@ class SalesGuru():
 			config=self.agents_config['email_outreach'],
 			tools=[task_validator_tool],
 			verbose=True,
-            llm=openai_llm
+            llm=openai_llm,
+            response_format=EmailOutreachResponse
 		)
 		# Enhance the agent with completion guarantees
 		return self.task_monitor.enhance_agent(agent)
@@ -269,7 +248,8 @@ class SalesGuru():
 			config=self.agents_config['sales_call_prep'],
 			tools=[task_validator_tool],
 			verbose=True,
-            llm=openai_llm
+            llm=openai_llm,
+            response_format=SalesCallPrepResponse
 		)
 		# Enhance the agent with completion guarantees
 		return self.task_monitor.enhance_agent(agent)
@@ -323,6 +303,7 @@ class SalesGuru():
 			verbose=True,  
 			llm=google_llm,  # Use the rate limited LLM
             allow_delegation=True
+            # No response_format for supervisor since it delegates tasks rather than returning structured data
 		)
 		return self.task_monitor.enhance_agent(agent)
 
@@ -344,19 +325,36 @@ class SalesGuru():
 	def kickoff(self, inputs=None):
 		"""Run the crew with task completion guarantees."""
 		# The @ensure_task_completion decorator will make sure all tasks are completed
-		return self.crew().kickoff(inputs=inputs)
+		result = self.crew().kickoff(inputs=inputs)
+		# Ensure we never return None, which would cause 'NoneType' object is not callable errors
+		if result is None:
+			logger.info("CrewAI kickoff returned None, replacing with empty dict")
+			return {}
+		return result
 	
 	@ensure_task_completion
 	def train(self, n_iterations=1, filename=None, inputs=None):
 		"""Train the crew with task completion guarantees."""
-		return self.crew().train(n_iterations=n_iterations, filename=filename, inputs=inputs)
+		result = self.crew().train(n_iterations=n_iterations, filename=filename, inputs=inputs)
+		if result is None:
+			logger.info("CrewAI train returned None, replacing with empty dict")
+			return {}
+		return result
 	
 	@ensure_task_completion
 	def replay(self, task_id=None):
 		"""Replay a specific task with task completion guarantees."""
-		return self.crew().replay(task_id=task_id)
+		result = self.crew().replay(task_id=task_id)
+		if result is None:
+			logger.info("CrewAI replay returned None, replacing with empty dict")
+			return {}
+		return result
 	
 	@ensure_task_completion
 	def test(self, n_iterations=1, openai_model_name=None, inputs=None):
 		"""Test the crew with task completion guarantees."""
-		return self.crew().test(n_iterations=n_iterations, openai_model_name=openai_model_name, inputs=inputs)
+		result = self.crew().test(n_iterations=n_iterations, openai_model_name=openai_model_name, inputs=inputs)
+		if result is None:
+			logger.info("CrewAI test returned None, replacing with empty dict")
+			return {}
+		return result

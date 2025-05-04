@@ -4,7 +4,6 @@ report.md
 .DS_Store
 docs/
 run.py
-knowledge/
 db/
 src/sales_guru/__pycache__
 src/sales_guru/__pycache__/crew.cpython-312.pyc

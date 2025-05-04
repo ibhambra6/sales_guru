@@ -1,6 +1,6 @@
 lead_qualification_task:
   description: >
-    Analyze each lead based on the company you represent: {company_name} and its description: {company_description}.
+    Analyze each lead based on the company you represent: {company_name} and its description: {company_description}
     Evaluate whether the lead's company would be a good fit for your offerings by considering:
     1. Industry alignment with your company's target markets
     2. Company size and growth potential
@@ -96,16 +96,17 @@ email_outreach_task:
 
 sales_call_prep_task:
   description: >
-    Generate concise yet comprehensive one-page call briefs for ALL HOT and WARM leads only, synthesizing data from multiple sources:
+    Generate concise yet comprehensive one-page call briefs for ALL HOT and WARM leads only, synthesizing data from multiple sources 
+    while keeping in mind the company you represent: {company_name} and its description: {company_description}
     
     1. Use the lead qualification and prospect research data as your foundation
     2. Extract critical company information (size, industry, revenue, growth)
     3. Compile key decision-maker details (role, background, communication style)
     4. Summarize previous interactions and relationship history
     5. Identify 3-5 specific pain points or opportunities based on research
-    6. Develop 3-5 strategic talking points aligned with pain points
-    7. Anticipate potential objections with prepared counter-responses
-    8. Outline clear next steps and desired call outcomes
+    6. Develop 3-5 strategic talking points aligned with pain points and your company's specific offerings
+    7. Anticipate potential objections with prepared counter-responses that highlight your company's strengths
+    8. Outline clear next steps and desired call outcomes that align with your company's sales process
     
     IMPORTANT GUIDELINES:
     - Focus EXCLUSIVELY on HOT and WARM leads - completely ignore COLD leads
@@ -115,10 +116,12 @@ sales_call_prep_task:
     - Ensure each brief is completely self-contained with all necessary context
     - Each brief MUST fit on a single page when printed (approximately 500-700 words)
     - Include direct quotes from research when particularly relevant (with source attribution)
+    - Incorporate specific details about how your company's products/services address the lead's needs
+    - Highlight points of alignment between your company's strengths and the lead's challenges
     
     The goal is to create a practical, action-oriented document that sales representatives can quickly review 
     before calls to enter conversations fully prepared and confident, focusing on relationship-building rather 
-    than information recall.
+    than information recall, while positioning your company's offerings as the ideal solution to the lead's problems.
   expected_output: >
     A JSON-formatted list of one-page call briefs for ALL HOT and WARM leads where each brief includes:
     
@@ -127,16 +130,18 @@ sales_call_prep_task:
     3. Decision-maker profile (role, background, communication preferences if known)
     4. Relationship history summary (previous interactions, current status)
     5. 3-5 identified pain points or opportunities with supporting evidence
-    6. 3-5 strategic talking points directly addressing pain points
-    7. Anticipated objections with prepared responses
-    8. Recommended next steps and desired outcomes
+    6. 3-5 strategic talking points directly addressing pain points with specific references to your company's offerings
+    7. Anticipated objections with prepared responses that highlight your company's strengths
+    8. Recommended next steps and desired outcomes aligned with your company's sales process
     9. Notable recent company developments or changes
-    10. Key competitive insights if applicable
+    10. Key competitive insights if applicable, with emphasis on your company's differentiators
+    11. Specific value propositions tailored to this lead based on your company's unique capabilities
     
     Each brief must be formatted for easy scanning, with clear section headings and bullet points.
     The content should prioritize actionable insights over general information and be structured 
     to support a natural conversation flow. All briefs should maintain a consistent format while 
-    being tailored to the specific lead's circumstances and potential value.
+    being tailored to the specific lead's circumstances and potential value, always keeping your 
+    company's offerings and value proposition front and center.
 
 # objection_handling_task:
 #   description: >
