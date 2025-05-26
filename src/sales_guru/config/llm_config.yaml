@@ -1,0 +1,46 @@
+# LLM Configuration for SalesGuru
+# This file contains settings to prevent rate limiting and improve reliability
+
+rate_limiting:
+  # Minimum seconds between requests to prevent rate limits
+  min_request_interval: 2.0
+  
+  # Token limits per minute for different models
+  token_limits:
+    gemini: 15000    # Conservative limit for Gemini models
+    openai: 20000    # Conservative limit for OpenAI models
+    
+  # Retry settings
+  max_retries: 5
+  base_wait_time: 30    # Base wait time for rate limit errors (seconds)
+  max_wait_time: 600    # Maximum wait time (10 minutes)
+
+models:
+  primary:
+    google: "gemini/gemini-2.5-pro-preview-05-06"
+    openai: "gpt-4.1"
+  
+  fallbacks:
+    google: 
+      - "gemini/gemini-1.5-flash"
+      - "gemini/gemini-pro"
+    openai:
+      - "gpt-3.5-turbo"
+      - "gpt-4o"
+
+# Error handling settings
+error_handling:
+  network_retry_limit: 3
+  api_error_retry_limit: 2
+  rate_limit_retry_limit: 5
+  
+  # Wait times for different error types (seconds)
+  network_error_wait: 10
+  api_error_wait: 5
+  unknown_error_wait: 5
+
+# Monitoring and logging
+monitoring:
+  log_level: "INFO"
+  track_token_usage: true
+  alert_on_rate_limits: true 

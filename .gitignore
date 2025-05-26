@@ -11,3 +11,5 @@ src/sales_guru/__pycache__/main.cpython-312.pyc
 src/sales_guru/tools/__pycache__/
 src/sales_guru.egg-info/
 build/
+src/sales_guru/outputs
+test_leads.csv

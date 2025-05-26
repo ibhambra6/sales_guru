@@ -1,311 +1,338 @@
-# SalesGuru Crew
+# Sales Guru - AI-Powered Sales Automation System
 
-Welcome to the SalesGuru Crew project, powered by [crewAI](https://crewai.com). This template is designed to help you set up a multi-agent AI system with ease, leveraging the powerful and flexible framework provided by crewAI. Our goal is to enable your agents to collaborate effectively on complex tasks, maximizing their collective intelligence and capabilities.
+Sales Guru is a production-ready AI-powered sales automation system built with CrewAI that can analyze any CSV file containing lead data and generate comprehensive sales materials including lead qualification, prospect research, email outreach, and sales call preparation.
 
-## Installation
+## Features
 
-Ensure you have Python >=3.10 <3.13 installed on your system. This project uses [UV](https://docs.astral.sh/uv/) for dependency management and package handling, offering a seamless setup and execution experience.
+- **Universal CSV Support**: Analyze any CSV file containing lead/prospect data
+- **Multi-Agent AI System**: Specialized agents for different sales tasks
+- **Comprehensive Output**: Lead qualification, prospect research, email templates, and call prep
+- **Production Ready**: Robust error handling, logging, and retry mechanisms
+- **Flexible Input**: Command-line arguments and environment variables
+- **Multiple Output Formats**: JSON and Markdown outputs
 
-First, if you haven't already, install uv:
+## Quick Start
 
-```bash
-pip install uv
-```
-
-Next, navigate to your project directory and install the dependencies:
-
-(Optional) Lock the dependencies and install them by using the CLI command:
-```bash
-crewai install
-```
-### Customizing
-
-**Add your `OPENAI_API_KEY` into the `.env` file**
-
-- Modify `src/sales_guru/config/agents.yaml` to define your agents
-- Modify `src/sales_guru/config/tasks.yaml` to define your tasks
-- Modify `src/sales_guru/crew.py` to add your own logic, tools and specific args
-- Modify `src/sales_guru/main.py` to add custom inputs for your agents and tasks
-
-## Running the Project
-
-To kickstart your crew of AI agents and begin task execution, run this from the root folder of your project:
+### 1. Installation
 
 ```bash
-$ crewai run
+# Clone the repository
+git clone <repository-url>
+cd sales_guru
+
+# Install dependencies
+pip install .
+
+# Set up environment variables
+cp .env.example .env
+# Edit .env with your API keys
 ```
 
-You can also use additional commands for different modes of operation:
+### 2. Set Up API Keys
+
+Create a `.env` file with your API keys:
+
+```env
+OPENAI_API_KEY=your_openai_api_key_here
+GOOGLE_API_KEY=your_google_api_key_here
+SERPER_API_KEY=your_serper_api_key_here
+```
+
+### 3. Prepare Your CSV File
+
+Sales Guru can work with any CSV file containing lead/prospect data. Common column names it recognizes include:
+
+- `company_name`, `company`, `organization`
+- `contact_name`, `name`, `full_name`, `first_name`, `last_name`
+- `email`, `email_address`
+- `phone`, `phone_number`
+- `website`, `company_website`, `url`
+- `industry`, `sector`
+- `title`, `job_title`, `position`
+- `location`, `city`, `state`, `country`
+
+**Example CSV structure (see `example_leads.csv` in the repository):**
+
+```csv
+company_name,contact_name,email,phone,website,industry,title,location,company_size
+Acme Corporation,John Smith,john.smith@acme.com,555-0123,acme.com,Technology,CEO,"New York, NY",100-500
+TechStart Solutions,Jane Doe,jane.doe@techstart.com,555-0456,techstart.com,Software,CTO,"San Francisco, CA",10-50
+```
+
+### 4. Run Sales Guru
+
+Sales Guru runs completely non-interactively. All parameters can be specified via command line arguments or environment variables.
+
+#### Basic Usage
 
 ```bash
-$ crewai run train  # Run in training mode with multiple iterations
-$ crewai run replay # Replay a specific task execution
-$ crewai run test   # Test your crew with specific parameters
+# Run with default CSV file (knowledge/leads.csv)
+sales-guru
+
+# Specify CSV file
+sales-guru --csv your_leads.csv
+
+# Specify all parameters
+sales-guru --csv leads.csv --company "Your Company" --description "Your company description"
+
+# Use different CSV file with environment variable
+export SALES_GURU_CSV_PATH=/path/to/your/leads.csv
+sales-guru
 ```
 
-When running the SalesGuru system, you'll be prompted to input:
-- Your company name
-- Your company description
+## Usage Examples
 
-For training and testing modes, you'll also specify:
-- Number of iterations
-- Filename to save results (training mode)
-- OpenAI model to use (testing mode)
+### Example 1: Using the Included Example File
 
-## Technical Architecture
-
-SalesGuru is built on the crewAI framework, employing a sophisticated multi-agent system with robust error handling, rate limiting, and task validation mechanisms. The architecture is designed to ensure reliable and consistent task completion, even in the face of API failures or model limitations.
-
-### Core Components
-
-#### 1. Agent Framework
-
-The agent system is defined in YAML configuration (`src/sales_guru/config/agents.yaml`) for easy customization without modifying code. The system implements:
-
-- **Role-Based Agent Design**: Each agent has a clearly defined role, goal, and backstory
-- **Hierarchical Process Model**: Using CrewAI's hierarchical process with a supervisor agent
-- **Task Dependency Chain**: Tasks are structured with explicit dependencies on previous task outputs
-
-#### 2. Task Completion Architecture
-
-A major technical feature is the robust task completion guarantee system:
-
-- **TaskCompletionMonitor**: A sophisticated monitoring system that tracks task execution, detects failures, and handles retries
-- **RateLimitedLLM**: A custom LLM wrapper that implements:
-  - Exponential backoff with jitter for rate limit handling
-  - Comprehensive error detection and recovery
-  - Empty response detection and fallback generation
-  - Token usage tracking to stay under API rate limits
-
-#### 3. Error Resilience Subsystem
-
-Multiple layers of error handling ensure system reliability:
-
-- **Function-Level Error Handling**: Try/except blocks with specific error type handling
-- **Task-Level Monitoring**: `@ensure_task_completion` decorator for task-level guarantees
-- **System-Level Recovery**: Global retry logic in main.py with exponential backoff
-- **Model-Level Patches**: Monkey patches to the CrewAI library to prevent empty response errors
-
-#### 4. Data Flow Architecture
-
-The system uses a structured data flow pattern:
-
-- **Configuration-Driven**: YAML files for agent and task definition
-- **Progressive Enhancement**: Each task takes previous task outputs as context
-- **Validated Output Structure**: JSON output with consistent schema validation
-
-### Code Organization
-
-The codebase is structured for modularity and maintainability:
-
-```
-src/sales_guru/
-├── config/                # Configuration files
-│   ├── agents.yaml       # Agent definitions with roles, goals, backstories
-│   └── tasks.yaml        # Task definitions with descriptions and expected outputs
-├── tools/                 # Custom tools
-│   ├── task_validator.py # Tool for validating task outputs
-│   └── custom_tool.py    # Base class for custom tools
-├── crew.py               # Main crew definition and agent initialization
-├── task_monitor.py       # Task monitoring and completion guarantee system
-├── supervisors.py        # Supervisor agent implementation
-└── main.py               # CLI entry point and global error handling
+```bash
+# Run with the included example CSV file
+sales-guru --csv example_leads.csv \
+  --company "Your Company Name" \
+  --description "Your company description"
 ```
 
-## Agentic Framework Implementation
+### Example 2: Real Estate Leads
 
-The SalesGuru system employs a sophisticated agentic framework with several key technical features:
-
-### 1. Agent Enhancement System
-
-Each agent in the system is "enhanced" through the `task_monitor.enhance_agent()` method, which adds:
-
-- Token usage monitoring
-- Rate limit awareness
-- Error recovery capabilities
-- Completion guarantees
-
-```python
-@agent
-def lead_qualification(self) -> Agent:
-    agent = Agent(
-        config=self.agents_config['lead_qualification'],
-        tools=[csv_search_tool, csv_read_tool, web_search_tool, task_validator_tool],
-        verbose=True,
-        llm=google_llm
-    )
-    # Enhance the agent with completion guarantees
-    return self.task_monitor.enhance_agent(agent)
+```bash
+sales-guru --csv real_estate_leads.csv \
+  --company "Premier Realty" \
+  --description "Full-service real estate agency specializing in residential and commercial properties"
 ```
 
-### 2. Multi-Model LLM Strategy
+### Example 3: SaaS Prospects
 
-SalesGuru implements a strategic multi-model approach:
-
-- **Google Gemini**: Used for lead qualification and research tasks (`gemini/gemini-2.0-flash`)
-- **OpenAI GPT-4o**: Used for content generation and sales material preparation
-- **Custom RateLimitedLLM Wrapper**: Provides consistent interfaces and error handling
-
-```python
-# Initialize the rate-limited LLMs
-google_llm = RateLimitedLLM(
-    model="gemini/gemini-2.0-flash",
-    api_key=google_api_key,
-    temperature=0.7
-)
-
-openai_llm = RateLimitedLLM(
-    model="gpt-4o",
-    api_key=openai_api_key,
-    temperature=0.7
-)
+```bash
+sales-guru --csv saas_prospects.csv \
+  --company "CloudTech Solutions" \
+  --description "Cloud-based software solutions for enterprise resource planning"
 ```
 
-### 3. Task Validation Architecture
+### Example 4: Manufacturing Leads
 
-Tasks are validated through a comprehensive system:
+```bash
+sales-guru --csv manufacturing_leads.csv \
+  --company "Industrial Equipment Co" \
+  --description "Industrial equipment manufacturer and supplier"
+```
 
-- **TaskValidatorTool**: A specialized tool that verifies outputs match requirements
-- **JSON Schema Validation**: Checking output structure against expected patterns
-- **Completeness Scoring**: Tasks are scored from 0-1 on meeting requirements
-- **Specific Issue Identification**: Pinpointing exactly what's missing from outputs
+### Example 5: Using Environment Variables
 
-### 4. CrewAI Integration
+```bash
+# Set your default CSV file
+export SALES_GURU_CSV_PATH=/path/to/your/leads.csv
 
-The system uses the CrewAI framework with several enhancements:
+# Run with defaults (no prompts)
+sales-guru
 
-- **Task Dependencies**: Tasks depend on previous tasks' outputs via the context parameter
-- **Hierarchical Process**: Using CrewAI's hierarchical process with manager supervision
-- **Custom Monkey Patches**: Patching CrewAI methods for better error handling
+# Override company info
+sales-guru --company "New Company" --description "New description"
+```
 
-## Current Agents in Detail
+## Command Line Options
 
-### 1. Lead Qualification Agent
+```bash
+sales-guru [command] [options]
 
-**Technical Implementation:**
-- **Model**: Google Gemini 2.0 Flash
-- **Tools**: CSV Search, CSV Read, Web Search, Task Validator
-- **Input**: Company details and lead CSV data
-- **Output**: JSON-structured lead scoring with classifications
+Commands:
+  run      Run the sales automation process (default)
+  train    Train the AI models
+  test     Test the system
+  replay   Replay a specific task
 
-This agent applies sophisticated analysis using a 0-100 scoring system and HOT/WARM/COLD classification based on:
-- Industry alignment with company's target markets
-- Company size and growth potential
-- Potential use cases for products/services
-- Decision-maker seniority and influence
-- Current tech stack compatibility
+Options:
+  --csv FILE              Path to CSV file containing leads
+  --company NAME          Your company name
+  --description TEXT      Your company description
+  --verbose, -v           Enable verbose logging
+  --iterations N          Number of iterations for train/test
+  --model MODEL           OpenAI model for testing
+  --task-id ID            Task ID for replay
+  --output FILE           Output file for training results
+```
 
-### 2. Prospect Research Agent
+## CSV File Requirements
 
-**Technical Implementation:**
-- **Model**: Google Gemini 2.0 Flash
-- **Tools**: Web Search, Task Validator, Web Scraping
-- **Input**: Qualified leads from previous agent
-- **Output**: Enriched lead data with detailed company and contact information
+### Minimum Requirements
 
-This agent intelligently:
-- Focuses only on HOT and WARM leads (ignoring COLD)
-- Allocates research time proportionally based on lead priority
-- Uses time-boxed web searches with max 2-3 searches per lead
-- Applies "good enough" principle to avoid diminishing returns
+- Must be a valid CSV file with headers
+- Should contain at least company names or contact information
+- File must be readable and properly formatted
 
-### 3. Email Outreach Agent
+### Recommended Columns
 
-**Technical Implementation:**
-- **Model**: OpenAI GPT-4o
-- **Tools**: Task Validator
-- **Input**: Enriched lead data from Prospect Research Agent
-- **Output**: Personalized email templates with subject lines, body content, and follow-up timing
+While Sales Guru is flexible with column names, these are the most useful:
 
-This agent creates highly personalized outreach by:
-- Crafting eye-catching subject lines referencing specific challenges
-- Personalizing opening lines based on recent company news
-- Articulating value propositions in context of specific business needs
-- Including relevant social proof for the lead's industry
-- Creating natural, conversational language with clear CTAs
+**Essential:**
 
-### 4. Sales Call Preparation Agent
+- Company name (any variation)
+- Contact name or email
 
-**Technical Implementation:**
-- **Model**: OpenAI GPT-4o
-- **Tools**: Task Validator
-- **Input**: Combined data from all previous agents
-- **Output**: One-page call briefs for sales representatives
+**Highly Recommended:**
 
-This agent synthesizes critical information into:
-- Concise company snapshots
-- Decision-maker profiles
-- Strategic talking points
-- Anticipated objections with prepared responses
-- Clear next steps and desired outcomes
+- Email address
+- Phone number
+- Website
+- Industry/sector
 
-### 5. Silent Task Completion Monitor (Supervisor)
+**Optional but Useful:**
 
-**Technical Implementation:**
-- **Model**: Google Gemini 2.0 Flash
-- **Role**: Manager in hierarchical process
-- **Function**: Ensures task completion without user-facing output
+- Job title/position
+- Location information
+- Company size
+- Revenue information
+- Any additional context
 
-This agent:
-- Delegates incomplete tasks back to original agents
-- Provides specific feedback on missing requirements
-- Operates completely behind the scenes
-- Never executes tasks itself or provides direct feedback to users
+### Example CSV Templates
 
-## Task Workflow and Dependencies
+#### Basic Template
 
-The system implements a carefully structured task dependency chain:
+```csv
+company_name,contact_name,email,website
+Acme Corp,John Smith,john@acme.com,acme.com
+TechStart,Jane Doe,jane@techstart.com,techstart.com
+```
 
-1. **Lead Qualification Task**
-   - Takes company details as input
-   - Analyzes leads against company profile
-   - Outputs scored and classified leads
+#### Comprehensive Template
 
-2. **Prospect Research Task**
-   - Takes qualified leads as input (context=[lead_qualification_task])
-   - Researches HOT and WARM leads only
-   - Outputs enriched lead data
+```csv
+company_name,contact_name,email,phone,website,industry,title,location,company_size
+Acme Corp,John Smith,john@acme.com,555-1234,acme.com,Technology,CEO,"New York, NY",50-100
+TechStart,Jane Doe,jane@techstart.com,555-5678,techstart.com,Software,CTO,"San Francisco, CA",10-50
+```
 
-3. **Email Outreach Task**
-   - Takes enriched leads as input (context=[prospect_research_task, lead_qualification_task])
-   - Creates personalized email templates
-   - Outputs ready-to-send emails
+## Output Files
 
-4. **Sales Call Prep Task**
-   - Takes all previous data as input (context=[email_outreach_task, prospect_research_task, lead_qualification_task])
-   - Creates one-page call briefs
-   - Outputs comprehensive sales preparation materials
+Sales Guru generates both JSON and Markdown outputs:
 
-Each task builds upon previous tasks, creating a progressive enhancement of lead data throughout the workflow.
+### JSON Outputs (for programmatic use)
 
-## Tools
+- `lead_qualification.json` - Qualified leads with scores and reasoning
+- `prospect_research.json` - Detailed research on each prospect
+- `email_outreach.json` - Personalized email templates
+- `sales_call_prep.json` - Call preparation materials
 
-The system comes equipped with several specialized tools:
+### Markdown Outputs (human-readable)
 
-- **Web Search Tool (SerperDevTool)**: For gathering online information about leads and companies
-- **CSV Search/Read Tools**: For accessing and querying lead data from CSV files
-- **Task Validator Tool**: For ensuring outputs meet all requirements
-- **Website Scraping Tool**: For extracting structured data from company websites
+- `lead_qualification.md` - Formatted lead qualification report
+- `prospect_research.md` - Research findings and insights
+- `email_outreach.md` - Email templates and strategies
+- `sales_call_prep.md` - Call scripts and talking points
 
-## Future Expansion
+## Advanced Usage
 
-SalesGuru is designed for future expansion with several additional agents already configured in the codebase but currently commented out:
+### Environment Variables
 
-- Objection Handling Agent
-- Proposal & Quote Generator Agent
-- Competitor Analysis Agent
-- Sales Forecasting Agent
-- Follow-up & Nurture Agent
-- Customer Success & Upsell Agent
+```bash
+# Set default CSV path
+export SALES_GURU_CSV_PATH=/path/to/your/default/leads.csv
 
-The modular architecture makes adding these agents a straightforward process of uncommenting the relevant code and implementing their specific tools and logic.
+# Set environment (affects logging)
+export ENVIRONMENT=production
+
+# Set log level
+export LOG_LEVEL=DEBUG
+```
+
+### Training the Model
+
+```bash
+# Train with your specific data
+sales-guru train --csv your_data.csv --iterations 5 --output training_results.json
+```
+
+### Testing
+
+```bash
+# Test the system
+sales-guru test --csv test_data.csv --model gpt-4o --iterations 3
+```
+
+## Architecture
+
+Sales Guru uses a multi-agent architecture with specialized AI agents:
+
+1. **Lead Qualification Agent** - Scores and qualifies leads
+2. **Prospect Research Agent** - Conducts detailed research
+3. **Email Outreach Agent** - Creates personalized emails
+4. **Sales Call Prep Agent** - Prepares call materials
+5. **Supervisor Agent** - Coordinates the workflow
+6. **Markdown Conversion Agent** - Formats outputs
+
+## Error Handling
+
+The system includes comprehensive error handling:
+
+- **API Rate Limiting**: Automatic retry with exponential backoff
+- **File Validation**: Validates CSV files before processing
+- **Fallback Models**: Switches to backup models if primary fails
+- **Task Completion Guarantees**: Ensures all tasks complete successfully
+
+## Logging
+
+Logs are written to:
+
+- Console (with appropriate level based on environment)
+- `logs/sales_guru.log` (rotating file handler in production)
+
+## Troubleshooting
+
+### Common Issues
+
+1. **CSV File Not Found**
+
+   ```bash
+   # Check file path
+   ls -la your_file.csv
+   # Use absolute path
+   sales-guru --csv /full/path/to/your_file.csv
+   ```
+2. **API Key Issues**
+
+   ```bash
+   # Verify API keys are set
+   echo $OPENAI_API_KEY
+   echo $GOOGLE_API_KEY
+   echo $SERPER_API_KEY
+   ```
+3. **Rate Limiting**
+
+   - The system automatically handles rate limits
+   - For heavy usage, consider upgrading API plans
+   - Use `--verbose` to see retry attempts
+4. **CSV Format Issues**
+
+   - Ensure proper CSV formatting
+   - Check for special characters in headers
+   - Verify file encoding (UTF-8 recommended)
+
+### Getting Help
+
+```bash
+# Show help
+sales-guru --help
+
+# Show version info
+sales-guru --version
+
+# Run with verbose logging
+sales-guru --verbose --csv your_file.csv
+```
+
+## Contributing
+
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes
+4. Add tests if applicable
+5. Submit a pull request
 
 ## Support
 
-For support, questions, or feedback regarding the SalesGuru Crew or crewAI.
-- Visit our [documentation](https://docs.crewai.com)
-- Reach out to us through our [GitHub repository](https://github.com/joaomdmoura/crewai)
-- [Join our Discord](https://discord.com/invite/X4JWnZnxPb)
-- [Chat with our docs](https://chatg.pt/DWjSBZn)
+For support, please:
 
-Let's create wonders together with the power and simplicity of crewAI.
+1. Check the troubleshooting section
+2. Review the logs for error details
+3. Open an issue with:
+   - Your CSV file structure (anonymized)
+   - Error messages
+   - Steps to reproduce

@@ -12,14 +12,13 @@ license = {text = "MIT"}
 dependencies = [
     "crewai",
     "crewai-tools",
+    "jsonschema2md>=1.5.2",
+    "litellm==1.55.0",
     "python-dotenv",
 ]
 
 [project.scripts]
-run_crew = "sales_guru.main:run"
-train_crew = "sales_guru.main:train"
-replay_crew = "sales_guru.main:replay"
-test_crew = "sales_guru.main:test"
+sales_guru = "sales_guru.main:main"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/sales_guru"]

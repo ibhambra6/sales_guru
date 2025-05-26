@@ -1,25 +1,105 @@
 lead_qualification_task:
   description: >
-    Analyze each lead based on the company you represent: {company_name} and its description: {company_description}
-    Evaluate whether the lead's company would be a good fit for your offerings by considering:
+    **STRICT DATA INTEGRITY REQUIREMENT**: Analyze ONLY the existing leads found in {file_name} file based on the company you represent: {company_name} and its description: {company_description}
+    
+    **ABSOLUTE PROHIBITION**: You are STRICTLY FORBIDDEN from:
+    - Creating, inventing, or adding ANY new leads not in the CSV file
+    - Modifying, changing, or altering ANY existing lead data (names, companies, emails, phones)
+    - Duplicating or repeating any leads
+    - Combining or merging lead records
+    - Using placeholder or example data
+    - Adding fictional or hypothetical leads
+    
+    **MANDATORY PROCESS - FOLLOW EXACTLY**:
+    1. **STEP 1**: Use csv_read_tool to read and display ALL leads from {file_name} file
+    2. **STEP 2**: Count the total number of leads in the CSV file
+    3. **STEP 3**: Analyze ONLY those exact leads with their exact data (name, company, email, phone)
+    4. **STEP 4**: Verify your output count matches the CSV count EXACTLY
+    5. **STEP 5**: Double-check that every name and company in your output matches the CSV exactly
+    
+    **DATA VALIDATION CHECKPOINTS**:
+    - Lead names must match CSV exactly (character-for-character)
+    - Company names must match CSV exactly (character-for-character)  
+    - Email addresses must match CSV exactly (character-for-character)
+    - Phone numbers must match CSV exactly (character-for-character)
+    - Total count in output = Total count in CSV (no more, no less)
+    
+    **QUALIFICATION ANALYSIS**: For each CSV lead, evaluate fit by considering:
     1. Industry alignment with your company's target markets
     2. Company size and growth potential
     3. Potential use cases for your products/services
     4. Decision-maker seniority and influence
     5. Current tech stack or solutions they might be using
-    Cleanse, normalize, and deduplicate the lead records as needed. Use the web to find more information about the lead if needed. **ALL** leads must be classified and there are no exceptions to these rules. 
+    
+    **RESEARCH GUIDELINES**: Use web search to find additional information about the CSV leads if needed, but NEVER use this research to create new leads or modify existing lead data.
+    
+    **CLASSIFICATION REQUIREMENT**: Every single lead from the CSV file must be classified as HOT, WARM, or COLD with no exceptions.
+    
+    **FINAL MANDATORY VERIFICATION**: Before submitting, confirm:
+    ✓ Output contains ONLY leads from CSV file (zero additions)
+    ✓ Every CSV lead is included exactly once (zero omissions)
+    ✓ All lead data matches CSV exactly (zero modifications)
+    ✓ Total output count = Total CSV count (perfect match)
+    ✓ No fictional, example, or placeholder leads exist in output
   expected_output: >
-    A JSON-formatted list of ALL lead records where each record includes:
-    1. Lead name 
-    2. Company name
-    3. Email address
-    4. Phone number
-    5. An additional field for lead score (0-100)
-    6. Classification (HOT, WARM, or COLD)
-    7. Brief reasoning for the classification
-    8. Potential value alignment between your company and the lead
-    9. Recommended approach for initial outreach
-    All formatted and ready for prioritization in the sales process. **ALL** leads must be classified and there are no exceptions to these rules.
+    **MANDATORY JSON FORMAT**: A JSON-formatted list containing ONLY the lead records from the CSV file where each record includes:
+    1. **Lead name** (EXACT character-for-character match from CSV - no modifications)
+    2. **Company name** (EXACT character-for-character match from CSV - no modifications)
+    3. **Email address** (EXACT character-for-character match from CSV - no modifications)
+    4. **Phone number** (EXACT character-for-character match from CSV - no modifications)
+    5. **Lead score** (0-100, your analysis)
+    6. **Classification** (HOT, WARM, or COLD, your analysis)
+    7. **Reasoning** (brief explanation for the classification, your analysis)
+    8. **Value alignment** (potential alignment between your company and the lead, your analysis)
+    9. **Recommended approach** (initial outreach strategy, your analysis)
+    
+    **STRICT OUTPUT REQUIREMENTS**:
+    - Total leads in output = Total leads in CSV (perfect 1:1 match)
+    - Zero additional leads beyond what exists in CSV
+    - Zero modifications to existing lead data (names, companies, emails, phones)
+    - Zero omissions - every CSV lead must be included
+    - Zero duplicates - each CSV lead appears exactly once
+    - All analysis fields (score, classification, reasoning, etc.) must be completed for every lead
+    
+    **VALIDATION CHECKLIST**: Your output will be rejected if:
+    ❌ Lead count doesn't match CSV count exactly
+    ❌ Any lead names/companies don't match CSV exactly  
+    ❌ Any fictional or invented leads are present
+    ❌ Any CSV leads are missing from output
+    ❌ Any lead data has been modified from CSV original
+  # output_file: "src/sales_guru/outputs/lead_qualification.md" # File will be written by markdown_lead_qualification_task
+
+markdown_lead_qualification_task:
+  description: >
+    CRITICAL: Take the COMPLETE JSON output from the 'lead_qualification_task' and convert it to Markdown format, preserving EVERY SINGLE PIECE of information exactly as provided.
+    
+    ABSOLUTE REQUIREMENTS:
+    - Include ALL data from the JSON input - every field, every value, every detail
+    - Do NOT condense, summarize, shorten, or modify any information in any way
+    - Do NOT add, remove, or alter any content whatsoever
+    - Do NOT reorganize or restructure the data - maintain the exact format and organization
+    - Present ALL information in full detail exactly as the agent provided it
+    - Every lead record must include ALL fields with their complete, unmodified content
+    - Preserve the exact wording, phrasing, and level of detail from the original output
+    - Do NOT create summaries or abbreviated versions of any content
+    
+    Use the JSONToMarkdownTool to perform a complete, comprehensive conversion that maintains 100% fidelity to the original data.
+  expected_output: >
+    A comprehensive Markdown document that contains EVERY SINGLE PIECE of information from the input JSON, presented in full detail exactly as provided.
+    
+    EVERY lead record must include ALL fields with their COMPLETE content:
+    - Lead Name (exact match)
+    - Company Name (exact match) 
+    - Email Address (exact match)
+    - Phone Number (exact match)
+    - Lead Score (complete value)
+    - Classification (complete value)
+    - Reasoning (FULL reasoning text, not condensed)
+    - Value Alignment (COMPLETE value alignment description)
+    - Recommended Approach (FULL recommended approach details)
+    
+    NO condensing, NO summarizing, NO shortening of any content. Present ALL information in its original form and completeness.
+  output_file: "src/sales_guru/outputs/lead_qualification.md"
 
 prospect_research_task:
   description: >
@@ -52,6 +132,40 @@ prospect_research_task:
     The enriched data should be structured and formatted for easy consumption by the Email & Outreach Agent.
     
     For any information that could not be found after a reasonable search effort, include a note stating "Information not readily available" rather than leaving fields empty.
+  
+  # output_file: "src/sales_guru/outputs/prospect_research.md" # File will be written by markdown_prospect_research_task
+
+markdown_prospect_research_task:
+  description: >
+    CRITICAL: Take the COMPLETE JSON output from the 'prospect_research_task' and convert it to Markdown format, preserving EVERY SINGLE PIECE of information exactly as provided.
+    
+    ABSOLUTE REQUIREMENTS:
+    - Include ALL data from the JSON input - every field, every value, every detail, every insight
+    - Do NOT condense, summarize, shorten, or modify any research findings in any way
+    - Do NOT add, remove, or alter any content whatsoever
+    - Do NOT reorganize or restructure the research data - maintain the exact format and organization
+    - Present ALL research findings in full detail exactly as the agent provided them
+    - Every prospect record must include ALL enriched fields with their complete, unmodified content
+    - Preserve the exact wording, phrasing, and level of detail from the original research output
+    - Do NOT create summaries or abbreviated versions of any research insights
+    - Include ALL company profile details, decision-maker insights, news, pain points, solutions, and talking points in their entirety
+    
+    Use the JSONToMarkdownTool to perform a complete, comprehensive conversion that maintains 100% fidelity to the original research data.
+  expected_output: >
+    A comprehensive Markdown document that contains EVERY SINGLE PIECE of research information from the input JSON, presented in full detail exactly as provided.
+    
+    EVERY enriched prospect record must include ALL fields with their COMPLETE content:
+    - ALL company profile information (complete industry details, size, revenue, products/services, etc.)
+    - ALL decision-maker insights (complete role details, background, responsibilities, etc.)
+    - ALL recent company developments and news (complete descriptions, not summaries)
+    - ALL identified pain points (complete descriptions and analysis)
+    - ALL current solutions information (complete competitive analysis)
+    - ALL urgency evidence (complete reasoning and details)
+    - ALL recommended talking points (complete suggestions with full context)
+    - ALL sources and citations (complete reference information)
+    
+    NO condensing, NO summarizing, NO shortening of any research content. Present ALL research findings in their original form and completeness.
+  output_file: "src/sales_guru/outputs/prospect_research.md"
 
 email_outreach_task:
   description: >
@@ -78,6 +192,27 @@ email_outreach_task:
     
     The goal is to create emails that feel individually crafted, not mass-produced, with messaging that directly 
     addresses why your solution is uniquely valuable to their specific situation right now.
+    
+    IMPORTANT: Your output MUST be valid JSON with the EXACT structure shown here:
+    
+    ```json
+    {{
+      "email_templates": [
+        {{
+          "lead_name": "John Smith",
+          "company_name": "ABC Corp",
+          "classification": "HOT",
+          "subject_line": "Reducing costs at ABC",
+          "email_body": "Dear John...",
+          "follow_up_timing": "3 days",
+          "alternative_contact_channels": "LinkedIn",
+          "ab_test_variations": [{{"element": "subject", "variation": "alt text"}}]
+        }}
+      ]
+    }}
+    ```
+    
+    Use the ExampleGenerator tool with input 'email_outreach' to see a complete example of the expected format.
   expected_output: >
     A **JSON-formatted list** of email templates for ALL HOT and WARM leads where each template includes:
     
@@ -93,6 +228,39 @@ email_outreach_task:
     The output should prioritize quality over quantity, with special attention given to HOT leads to maximize 
     conversion potential. All emails must maintain a professional tone while being conversational enough to stand 
     out from typical sales messages.
+
+    Your output MUST be a valid JSON object with the "email_templates" array as its top-level key.
+
+markdown_email_outreach_task:
+  description: >
+    CRITICAL: Take the COMPLETE JSON output from the 'email_outreach_task' and convert it to Markdown format, preserving EVERY SINGLE PIECE of information exactly as provided.
+    
+    ABSOLUTE REQUIREMENTS:
+    - Include ALL data from the JSON input - every email template, every field, every value, every detail
+    - Do NOT condense, summarize, shorten, or modify any email content in any way
+    - Do NOT add, remove, or alter any email content whatsoever
+    - Do NOT reorganize or restructure the email data - maintain the exact format and organization
+    - Present ALL email templates in full detail exactly as the agent created them
+    - Every email template must include ALL fields with their complete, unmodified content
+    - Preserve the exact wording, phrasing, and level of detail from the original email output
+    - Do NOT create summaries or abbreviated versions of any email content
+    - Include ALL subject lines, email bodies, follow-up timing, contact channels, and A/B test variations in their entirety
+    
+    Use the JSONToMarkdownTool to perform a complete, comprehensive conversion that maintains 100% fidelity to the original email templates.
+  expected_output: >
+    A comprehensive Markdown document that contains EVERY SINGLE EMAIL TEMPLATE from the input JSON, presented in full detail exactly as provided.
+    
+    EVERY email template must include ALL fields with their COMPLETE content:
+    - Lead Name and Company (exact match)
+    - Classification (exact match)
+    - Subject Line (complete, unmodified text)
+    - Email Body (COMPLETE email content - full greeting, introduction, value proposition, pain point addressing, social proof, call-to-action - exactly as written)
+    - Follow-up Timing (complete recommendations)
+    - Alternative Contact Channels (complete information)
+    - A/B Test Variations (ALL variations with complete details)
+    
+    NO condensing, NO summarizing, NO shortening of any email content. Present ALL email templates in their original form and completeness.
+  output_file: "src/sales_guru/outputs/email_outreach.md"
 
 sales_call_prep_task:
   description: >
@@ -119,6 +287,32 @@ sales_call_prep_task:
     - Incorporate specific details about how your company's products/services address the lead's needs
     - Highlight points of alignment between your company's strengths and the lead's challenges
     
+    IMPORTANT: Your output MUST be valid JSON with the EXACT structure shown here:
+    
+    ```json
+    {{
+      "call_briefs": [
+        {{
+          "lead_name": "John Smith",
+          "company_name": "ABC Corp",
+          "classification": "HOT",
+          "company_snapshot": "Company info...",
+          "decision_maker_profile": "About John...",
+          "relationship_history": "Previous interactions...",
+          "pain_points": ["Pain point 1", "Pain point 2"],
+          "talking_points": ["Talking point 1", "Talking point 2"],
+          "objection_responses": [{{"objection": "Too expensive", "response": "ROI is..."}}],
+          "next_steps": ["Next step 1", "Next step 2"],
+          "recent_developments": "New product launch...",
+          "competitive_insights": "Competitor analysis...",
+          "value_propositions": ["Value prop 1", "Value prop 2"]
+        }}
+      ]
+    }}
+    ```
+    
+    Use the ExampleGenerator tool with input 'sales_call_prep' to see a complete example of the expected format.
+    
     The goal is to create a practical, action-oriented document that sales representatives can quickly review 
     before calls to enter conversations fully prepared and confident, focusing on relationship-building rather 
     than information recall, while positioning your company's offerings as the ideal solution to the lead's problems.
@@ -142,39 +336,40 @@ sales_call_prep_task:
     to support a natural conversation flow. All briefs should maintain a consistent format while 
     being tailored to the specific lead's circumstances and potential value, always keeping your 
     company's offerings and value proposition front and center.
+    
+    Your output MUST be a valid JSON object with the "call_briefs" array as its top-level key.
 
-# objection_handling_task:
-#   description: >
-#     Analyze historical sales data to provide real-time objection handling suggestions during calls.
-#   expected_output: >
-#     A list of recommended responses for common objections, structured for quick reference.
-
-# proposal_quote_task:
-#   description: >
-#     Automatically generate tailored proposals and pricing quotes by integrating data from product catalogs, CRM, and customer details.
-#   expected_output: >
-#     Detailed proposal and quote documents for each customer, covering pricing and custom recommendations.
-
-# competitor_analysis_task:
-#   description: >
-#     Gather and summarize competitor information through web scraping and market research, highlighting key competitive insights.
-#   expected_output: >
-#     A summary report of competitor strengths, weaknesses, and market positioning.
-
-# sales_forecasting_task:
-#   description: >
-#     Utilize historical deal data and current pipeline metrics to predict deal success and forecast future revenue.
-#   expected_output: >
-#     A forecasting model output with predicted success rates and revenue estimates for ongoing deals.
-
-# followup_nurture_task:
-#   description: >
-#     Implement and schedule follow-up communications to nurture leads based on CRM data and email tracking.
-#   expected_output: >
-#     A scheduled set of follow-up messages with corresponding time triggers and content drafts.
-
-# customer_success_upsell_task:
-#   description: >
-#     Analyze customer usage values, support tickets, and CRM insights to flag accounts with upsell or renewal potential.
-#   expected_output: >
-#     A report detailing accounts flagged for upsell/renewal along with the metrics used for their assessment.
+markdown_sales_call_prep_task:
+  description: >
+    CRITICAL: Take the COMPLETE JSON output from the 'sales_call_prep_task' and convert it to Markdown format, preserving EVERY SINGLE PIECE of information exactly as provided.
+    
+    ABSOLUTE REQUIREMENTS:
+    - Include ALL data from the JSON input - every call brief, every field, every value, every detail, every insight
+    - Do NOT condense, summarize, shorten, or modify any call preparation content in any way
+    - Do NOT add, remove, or alter any call brief content whatsoever
+    - Do NOT reorganize or restructure the call brief data - maintain the exact format and organization
+    - Present ALL call briefs in full detail exactly as the agent prepared them
+    - Every call brief must include ALL fields with their complete, unmodified content
+    - Preserve the exact wording, phrasing, and level of detail from the original call preparation output
+    - Do NOT create summaries or abbreviated versions of any call brief content
+    - Include ALL company snapshots, decision-maker profiles, pain points, talking points, objection responses, and next steps in their entirety
+    
+    Use the JSONToMarkdownTool to perform a complete, comprehensive conversion that maintains 100% fidelity to the original call preparation data.
+  expected_output: >
+    A comprehensive Markdown document that contains EVERY SINGLE CALL BRIEF from the input JSON, presented in full detail exactly as provided.
+    
+    EVERY call brief must include ALL fields with their COMPLETE content:
+    - Lead Name, Company, and Classification (exact match)
+    - Company Snapshot (COMPLETE industry, size, revenue, growth details)
+    - Decision-maker Profile (COMPLETE role, background, communication preferences)
+    - Relationship History (COMPLETE interaction history and current status)
+    - Pain Points (ALL identified pain points with COMPLETE descriptions and supporting evidence)
+    - Talking Points (ALL strategic talking points with COMPLETE context and details)
+    - Objection Responses (ALL anticipated objections with COMPLETE prepared responses)
+    - Next Steps (ALL recommended next steps with COMPLETE details)
+    - Recent Developments (COMPLETE company developments and changes)
+    - Competitive Insights (COMPLETE competitive analysis and differentiators)
+    - Value Propositions (ALL value propositions with COMPLETE descriptions)
+    
+    NO condensing, NO summarizing, NO shortening of any call preparation content. Present ALL call briefs in their original form and completeness.
+  output_file: "src/sales_guru/outputs/sales_call_prep.md"
